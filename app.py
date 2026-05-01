@@ -84,6 +84,15 @@ def get_cpu_name() -> str:
     return os.uname().machine
 
 
+def short_cpu_label(name: str) -> str:
+    upper = name.upper()
+    for token in ["9950X", "7950X", "5955WX", "EPYC", "3990X", "3960X", "3970X"]:
+        if token in upper:
+            return token
+    cleaned = name.replace("AMD", "").replace("Ryzen", "").replace("Threadripper", "").replace("Processor", "").strip()
+    return truncate_middle(cleaned or name, 12)
+
+
 def color_for_pct(value: float) -> str:
     if value >= 90:
         return "red"
@@ -509,16 +518,17 @@ class RigMonitor(App):
         if self.force_compact_gpu:
             mode_tag += " [GPU-C]"
         cpu_title = truncate_middle(self.cpu_name, 28 if compact else 42)
+        cpu_short = short_cpu_label(self.cpu_name)
         cpu_bar = bar(cpu, 100, 10 if compact else 16)
         ram_bar = bar(vm.percent, 100, 10 if compact else 16)
         cpu_color = color_for_pct(cpu)
         ram_color = color_for_pct(vm.percent)
-        net_peak = max(list(self.net_down_hist) + list(self.net_up_hist) + [1.0])
+        net_peak = max(list(self.net_down_hist) + list(self.net_up_hist) + [0.05])
         if tiny:
             short_cpu = self.cpu_name.replace('AMD ', '').replace('Processor', '').strip()
             self.cpu_box.value = (
                 f"[{cpu_color}]{cpu:.0f}%[/{cpu_color}] [{cpu_color}]{bar(cpu, 100, 8)}[/{cpu_color}]\n"
-                f"{truncate_middle(short_cpu, 20)}{mode_tag}"
+                f"{cpu_short}{mode_tag}"
             )
             self.ram_box.value = (
                 f"[{ram_color}]{vm.percent:.0f}%[/{ram_color}] [{ram_color}]{bar(vm.percent, 100, 8)}[/{ram_color}]\n"
@@ -535,7 +545,7 @@ class RigMonitor(App):
         elif wall_mode:
             self.cpu_box.value = (
                 f"[{cpu_color}]{cpu:.0f}%[/{cpu_color}]  [{cpu_color}]{bar(cpu, 100, 12)}[/{cpu_color}]\n"
-                f"[yellow]ld {load[0]:.1f}[/yellow]  {truncate_middle(cpu_title, 20)}{mode_tag}"
+                f"[yellow]ld {load[0]:.1f}[/yellow]  {cpu_short}{mode_tag}"
             )
             self.ram_box.value = (
                 f"[{ram_color}]{vm.percent:.0f}%[/{ram_color}]  [{ram_color}]{bar(vm.percent, 100, 12)}[/{ram_color}]\n"
