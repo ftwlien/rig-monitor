@@ -255,6 +255,9 @@ class RigMonitor(App):
         self.cpu_hist: Deque[float] = deque(maxlen=120)
         self.gpu_util_hist: Deque[float] = deque(maxlen=120)
         self.gpu_mem_hist: Deque[float] = deque(maxlen=120)
+        self.cached_gpu_proc_rows: List[GpuProcRow] = []
+        self.cached_top_procs: List[tuple] = []
+        self.last_proc_refresh = 0.0
         psutil.cpu_percent(interval=None, percpu=True)
         self.set_interval(1.0, self.refresh_stats)
 
@@ -513,7 +516,12 @@ class RigMonitor(App):
             )
 
         gpu_rows = self.get_gpu_rows()
-        gpu_proc_rows = self.get_gpu_process_rows(compact)
+        proc_refresh_interval = 4.0 if compact else 2.0
+        if (now - self.last_proc_refresh) >= proc_refresh_interval or not self.cached_gpu_proc_rows:
+            self.cached_gpu_proc_rows = self.get_gpu_process_rows(compact)
+            self.cached_top_procs = self.get_top_procs(compact)
+            self.last_proc_refresh = now
+        gpu_proc_rows = self.cached_gpu_proc_rows
 
         gpu_lines = ["[b bright_white]GPU COMMAND CENTER[/b bright_white]", ""]
 
@@ -545,7 +553,8 @@ class RigMonitor(App):
             core_lines.append("no per-core data")
 
         if gpu_rows:
-            visible_gpu_rows = gpu_rows if not tiny else gpu_rows[: min(len(gpu_rows), 8)]
+            gpu_row_limit = 4 if compact else len(gpu_rows)
+            visible_gpu_rows = gpu_rows[:gpu_row_limit]
             for g in visible_gpu_rows:
                 gpu_color = color_for_pct(g.util)
                 mem_color = color_for_pct(g.mem_util_pct)
@@ -566,7 +575,7 @@ class RigMonitor(App):
                     gpu_lines.append(f"TEMP [yellow]{g.temp_c}°C[/yellow]  [magenta]{g.power_w:.0f}W[/magenta]  {temp_flag}")
                 if not tiny:
                     gpu_lines.append("")
-            if tiny and len(gpu_rows) > len(visible_gpu_rows):
+            if len(gpu_rows) > len(visible_gpu_rows):
                 gpu_lines.append(f"... showing {len(visible_gpu_rows)}/{len(gpu_rows)} gpus")
         else:
             gpu_lines.append("NVML unavailable")
@@ -580,12 +589,15 @@ class RigMonitor(App):
         gpu_body.append("[b bright_white]GPU PROCESSES[/b bright_white]")
         if gpu_proc_rows:
             if compact:
-                gpu_body.append("GPU PID     MEM    CPU   CMD")
-                for row in gpu_proc_rows:
+                compact_gpu_proc_rows = gpu_proc_rows[:3]
+                gpu_body.append("GPU PROCS")
+                for row in compact_gpu_proc_rows:
                     name = truncate_middle(row.name, 12)
                     gpu_body.append(
-                        f"[magenta]{row.gpu}[/magenta]   {row.pid:<7} [yellow]{row.mem_mib:>4.0f}M[/yellow] [cyan]{row.cpu_pct:>4.0f}%[/cyan] {name}"
+                        f"[magenta]{row.gpu}[/magenta] [yellow]{row.mem_mib:>4.0f}M[/yellow] [cyan]{row.cpu_pct:>3.0f}%[/cyan] {name}"
                     )
+                if len(gpu_proc_rows) > len(compact_gpu_proc_rows):
+                    gpu_body.append(f"... {len(gpu_proc_rows) - len(compact_gpu_proc_rows)} more")
             else:
                 gpu_body.append("GPU PID      GPU-MEM   MEM%   CPU%   RAM%   COMMAND")
                 for row in gpu_proc_rows:
@@ -600,9 +612,10 @@ class RigMonitor(App):
         self.query_one('#leftpane').styles.width = '7fr'
         self.query_one('#rightpane').styles.display = 'block'
         self.query_one('#rightpane').styles.width = '3fr'
-        procs = self.get_top_procs(compact)
+        procs = self.cached_top_procs
         proc_lines = ["[b bright_white]TOP PROCESSES[/b bright_white]", "", "PID      NAME           CPU%  MEM%" if compact else "PID      NAME                 CPU%   MEM%"]
-        for pid, name, cpu_p, mem_p in procs:
+        display_procs = procs[:8] if compact else procs
+        for pid, name, cpu_p, mem_p in display_procs:
             if compact:
                 proc_lines.append(f"{pid:<8} {name:<14} [cyan]{cpu_p:>4.1f}[/cyan] [green]{mem_p:>5.1f}[/green]")
             else:
