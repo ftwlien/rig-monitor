@@ -602,14 +602,9 @@ class RigMonitor(App):
                         f"[b cyan]G{g.index}[/b cyan] {truncate_middle(gpu_name, 20)}  [{gpu_color}]{g.util:>3}%[/{gpu_color}]  [{mem_color}]{g.mem_util_pct:>3.0f}% mem[/{mem_color}]  [yellow]{g.temp_c}°[/yellow]  [magenta]{g.power_w:.0f}W[/magenta]"
                     )
                 elif wall_mode:
-                    if compact_wall_gpu:
-                        gpu_lines.append(f"[b cyan]GPU {g.index}[/b cyan] [bright_white]{truncate_middle(gpu_name, 18)}[/bright_white]")
-                        gpu_lines.append(f"UTIL [{gpu_color}]{g.util:>3}%[/{gpu_color}] [{gpu_color}]{bar(g.util, 100, 12)}[/{gpu_color}]")
-                        gpu_lines.append(f"VRAM [{mem_color}]{g.mem_util_pct:>3.0f}%[/{mem_color}] [{mem_color}]{bar(g.mem_util_pct, 100, 12)}[/{mem_color}]")
-                    else:
-                        gpu_lines.append(f"[b cyan]GPU {g.index}[/b cyan] [bright_white]{truncate_middle(gpu_name, 22)}[/bright_white]")
-                        gpu_lines.append(f"UTIL [{gpu_color}]{g.util:>3}%[/{gpu_color}] [{gpu_color}]{bar(g.util, 100, 20)}[/{gpu_color}]")
-                        gpu_lines.append(f"VRAM [{mem_color}]{g.mem_util_pct:>3.0f}%[/{mem_color}] [{mem_color}]{bar(g.mem_util_pct, 100, 20)}[/{mem_color}]")
+                    gpu_lines.append(f"[b cyan]GPU {g.index}[/b cyan] [bright_white]{truncate_middle(gpu_name, 22)}[/bright_white]")
+                    gpu_lines.append(f"UTIL [{gpu_color}]{g.util:>3}%[/{gpu_color}] [{gpu_color}]{bar(g.util, 100, 20)}[/{gpu_color}]")
+                    gpu_lines.append(f"VRAM [{mem_color}]{g.mem_util_pct:>3.0f}%[/{mem_color}] [{mem_color}]{bar(g.mem_util_pct, 100, 20)}[/{mem_color}]")
                     gpu_lines.append(f"TEMP [yellow]{g.temp_c}°C[/yellow]  [magenta]{g.power_w:.0f}W[/magenta]  [green]{g.mem_used_gb:.1f}/{g.mem_total_gb:.1f}G[/green]")
                 elif compact:
                     gpu_lines.append(f"[b cyan]GPU {g.index}[/b cyan] [bright_white]{gpu_name}[/bright_white]")
