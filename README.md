@@ -6,11 +6,11 @@ A clean terminal dashboard for GPU rigs with live GPU, CPU, RAM, bandwidth, disk
 
 Most rig monitoring tools only show part of the picture.
 
-Some are great for CPU and system load.
-Some are great for GPU stats.
-But when you're actually operating GPU rigs, that split is annoying as hell — you end up bouncing between multiple tools just to understand what one machine is doing.
+Some are good at CPU and system load.
+Some are good at GPU stats.
+But when you're actually operating GPU rigs, that split gets annoying fast — you end up jumping between multiple tools just to understand what one machine is doing.
 
-`rig-monitor` was made to fix that.
+`rig-monitor` exists to fix that.
 
 The goal is simple:
 - one terminal dashboard
@@ -40,7 +40,7 @@ That means tracking:
 - Disk read/write monitoring
 - Top process view
 - GPU process view
-- Compact-friendly layout for tiled terminal setups
+- Wall-mode friendly layout for tiled terminal setups
 
 ## Requirements
 
@@ -64,17 +64,29 @@ rig-monitor
 
 If `~/.local/bin` is not already on your `PATH`, the installer will tell you what to add.
 
+## Update
+
+If `rig-monitor` is already installed:
+
+```bash
+cd ~/rig-monitor && git pull && bash scripts/install.sh
+```
+
 ## Manual run
 
 ```bash
 cd ~/rig-monitor && python3 app.py
 ```
 
+## Controls
+
+- `w` → toggle wall mode
+- `g` → toggle compact GPU mode
+- `c` → toggle shown CPU cores
+- `f` → toggle denser CPU-core display
+
 ## Notes
 
 - GPU metrics require `pynvml` / NVIDIA management support.
 - If NVML is unavailable, the dashboard will still run, but GPU sections will be limited.
-
-## Controls
-
-- `c` → toggle CPU core view
+- Wall mode is designed for tiled / multi-panel monitoring setups where GPU visibility matters more than a noisy full process table.
