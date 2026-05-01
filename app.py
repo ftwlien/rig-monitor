@@ -147,6 +147,7 @@ class RigMonitor(App):
         Binding("c", "toggle_cores", "Toggle cores"),
         Binding("w", "toggle_wall_mode", "Toggle wall mode"),
         Binding("f", "toggle_core_density", "Toggle core density"),
+        Binding("g", "toggle_compact_gpu", "Toggle compact GPU"),
     ]
 
     CSS = """
@@ -249,6 +250,7 @@ class RigMonitor(App):
         self.show_all_cores = False
         self.force_wall_mode = False
         self.compact_core_density = False
+        self.force_compact_gpu = False
         self.last_net = psutil.net_io_counters()
         self.last_disk = psutil.disk_io_counters()
         self.last_ts = time.time()
@@ -272,10 +274,10 @@ class RigMonitor(App):
         return self.force_wall_mode or self.size.width < 170 or self.size.height < 48
 
     def is_compact_wall_gpu(self) -> bool:
-        return self.size.width < 95 or self.size.height < 24
+        return self.force_compact_gpu
 
     def is_medium_wall_gpu(self) -> bool:
-        return self.size.width < 115 or self.size.height < 28
+        return False
 
     def is_tiny(self) -> bool:
         return self.size.width < 125 or self.size.height < 34
@@ -290,6 +292,10 @@ class RigMonitor(App):
 
     def action_toggle_core_density(self) -> None:
         self.compact_core_density = not self.compact_core_density
+        self.refresh_stats()
+
+    def action_toggle_compact_gpu(self) -> None:
+        self.force_compact_gpu = not self.force_compact_gpu
         self.refresh_stats()
 
     def get_gpu_rows(self) -> List[GpuRow]:
@@ -474,6 +480,8 @@ class RigMonitor(App):
         self.cpu_hist.append(cpu)
 
         mode_tag = " [WALL]" if wall_mode else ""
+        if self.force_compact_gpu:
+            mode_tag += " [GPU-C]"
         cpu_title = truncate_middle(self.cpu_name, 28 if compact else 42)
         cpu_bar = bar(cpu, 100, 10 if compact else 16)
         ram_bar = bar(vm.percent, 100, 10 if compact else 16)
@@ -598,10 +606,6 @@ class RigMonitor(App):
                         gpu_lines.append(f"[b cyan]GPU {g.index}[/b cyan] [bright_white]{truncate_middle(gpu_name, 18)}[/bright_white]")
                         gpu_lines.append(f"UTIL [{gpu_color}]{g.util:>3}%[/{gpu_color}] [{gpu_color}]{bar(g.util, 100, 12)}[/{gpu_color}]")
                         gpu_lines.append(f"VRAM [{mem_color}]{g.mem_util_pct:>3.0f}%[/{mem_color}] [{mem_color}]{bar(g.mem_util_pct, 100, 12)}[/{mem_color}]")
-                    elif medium_wall_gpu:
-                        gpu_lines.append(f"[b cyan]GPU {g.index}[/b cyan] [bright_white]{truncate_middle(gpu_name, 20)}[/bright_white]")
-                        gpu_lines.append(f"UTIL [{gpu_color}]{g.util:>3}%[/{gpu_color}] [{gpu_color}]{bar(g.util, 100, 16)}[/{gpu_color}]")
-                        gpu_lines.append(f"VRAM [{mem_color}]{g.mem_util_pct:>3.0f}%[/{mem_color}] [{mem_color}]{bar(g.mem_util_pct, 100, 16)}[/{mem_color}]")
                     else:
                         gpu_lines.append(f"[b cyan]GPU {g.index}[/b cyan] [bright_white]{truncate_middle(gpu_name, 22)}[/bright_white]")
                         gpu_lines.append(f"UTIL [{gpu_color}]{g.util:>3}%[/{gpu_color}] [{gpu_color}]{bar(g.util, 100, 20)}[/{gpu_color}]")
