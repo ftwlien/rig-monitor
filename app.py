@@ -651,15 +651,12 @@ class RigMonitor(App):
         gpu_body.append("[b bright_white]GPU WORKLOAD[/b bright_white]")
         if gpu_proc_rows:
             if wall_mode:
-                wall_gpu_proc_rows = gpu_proc_rows[:2]
-                for row in wall_gpu_proc_rows:
+                for row in gpu_proc_rows:
                     gpu_body.append(
                         f"GPU{row.gpu}  [yellow]{row.mem_mib:>4.0f} MiB[/yellow]  [cyan]{row.cpu_pct:>3.0f}% CPU[/cyan]  [green]{row.ram_pct:>3.0f}% RAM[/green]"
                     )
                     gpu_body.append(f"{truncate_middle(row.cmd, 44)}")
                     gpu_body.append("")
-                if len(gpu_proc_rows) > len(wall_gpu_proc_rows):
-                    gpu_body.append(f"... {len(gpu_proc_rows) - len(wall_gpu_proc_rows)} more gpu processes")
             elif compact:
                 compact_gpu_proc_rows = gpu_proc_rows[:2]
                 for row in compact_gpu_proc_rows:
