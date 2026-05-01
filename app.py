@@ -143,11 +143,13 @@ class MetricBox(Static):
 
 
 class RigMonitor(App):
+    CSS_PATH = None
     BINDINGS = [
         Binding("c", "toggle_cores", "Toggle cores"),
         Binding("w", "toggle_wall_mode", "Toggle wall mode"),
         Binding("f", "toggle_core_density", "Toggle core density"),
         Binding("g", "toggle_compact_gpu", "Toggle compact GPU"),
+        Binding("b", "toggle_black_mode", "Toggle black mode"),
     ]
 
     CSS = """
@@ -253,6 +255,8 @@ class RigMonitor(App):
         self.force_wall_mode = True
         self.compact_core_density = True
         self.force_compact_gpu = False
+        self.black_mode = False
+        self.theme = 'ansi-dark'
         self.last_net = psutil.net_io_counters()
         self.last_disk = psutil.disk_io_counters()
         self.last_ts = time.time()
@@ -298,6 +302,26 @@ class RigMonitor(App):
 
     def action_toggle_compact_gpu(self) -> None:
         self.force_compact_gpu = not self.force_compact_gpu
+        self.refresh_stats()
+
+    def action_toggle_black_mode(self) -> None:
+        self.black_mode = not self.black_mode
+        if self.black_mode:
+            self.screen.styles.background = '#05070c'
+            for w in self.query('.metric'):
+                w.styles.background = '#06080d'
+                w.styles.border = ('heavy', '#181c24')
+            for w in self.query('.panel'):
+                w.styles.background = '#06080d'
+                w.styles.border = ('heavy', '#181c24')
+        else:
+            self.screen.styles.background = '#050816'
+            for w in self.query('.metric'):
+                w.styles.background = '#0b1222'
+                w.styles.border = ('heavy', '#38bdf8')
+            for w in self.query('.panel'):
+                w.styles.background = '#0b1020'
+                w.styles.border = ('heavy', '#475569')
         self.refresh_stats()
 
     def get_gpu_rows(self) -> List[GpuRow]:
