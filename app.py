@@ -506,6 +506,23 @@ class RigMonitor(App):
                 f"[bright_blue]R {format_rate(read_mb)}[/bright_blue]\n"
                 f"[cyan]W {format_rate(write_mb)}[/cyan]"
             )
+        elif wall_mode:
+            self.cpu_box.value = (
+                f"[{cpu_color}]{cpu:.0f}%[/{cpu_color}]  [{cpu_color}]{bar(cpu, 100, 12)}[/{cpu_color}]\n"
+                f"[yellow]ld {load[0]:.1f}[/yellow]  {truncate_middle(cpu_title, 20)}{mode_tag}"
+            )
+            self.ram_box.value = (
+                f"[{ram_color}]{vm.percent:.0f}%[/{ram_color}]  [{ram_color}]{bar(vm.percent, 100, 12)}[/{ram_color}]\n"
+                f"[green]{vm.used / 1024**3:.1f}/{vm.total / 1024**3:.1f}G[/green] free [cyan]{vm.available / 1024**3:.1f}G[/cyan]"
+            )
+            self.net_box.value = (
+                f"[bright_blue]↓ {format_rate(down_mb)}[/bright_blue]\n"
+                f"[cyan]↑ {format_rate(up_mb)}[/cyan]"
+            )
+            self.disk_box.value = (
+                f"[bright_blue]R {format_rate(read_mb)}[/bright_blue]\n"
+                f"[cyan]W {format_rate(write_mb)}[/cyan]"
+            )
         elif compact:
             self.cpu_box.value = (
                 f"[{cpu_color}]{cpu:.0f}%[/{cpu_color}] [{cpu_color}]{cpu_bar}[/{cpu_color}]\n"
@@ -549,7 +566,7 @@ class RigMonitor(App):
             )
 
         gpu_rows = self.get_gpu_rows()
-        proc_refresh_interval = 4.0 if compact else 2.0
+        proc_refresh_interval = 4.0 if (compact or wall_mode) else 2.0
         if (now - self.last_proc_refresh) >= proc_refresh_interval or not self.cached_gpu_proc_rows:
             self.cached_gpu_proc_rows = self.get_gpu_process_rows(compact)
             self.cached_top_procs = self.get_top_procs(compact)
@@ -580,7 +597,7 @@ class RigMonitor(App):
                     if self.compact_core_density:
                         row.append(f"C{idx:02d} [{c}]{val:>3.0f}%[/{c}]")
                     else:
-                        row.append(f"C{idx:02d} [{c}]{val:>3.0f}%[/{c}] [{c}]{bar(val, 100, 6 if compact else 8)}[/{c}]")
+                        row.append(f"C{idx:02d} [{c}]{val:>3.0f}%[/{c}] [{c}]{bar(val, 100, 6 if (compact or wall_mode) else 8)}[/{c}]")
                 core_lines.append("   ".join(row))
             if len(cpu_per_core) > default_limit:
                 mode = "all" if self.show_all_cores else f"{default_limit}"
