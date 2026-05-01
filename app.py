@@ -148,13 +148,12 @@ class RigMonitor(App):
         Binding("w", "toggle_wall_mode", "Toggle wall mode"),
         Binding("f", "toggle_core_density", "Toggle core density"),
         Binding("g", "toggle_compact_gpu", "Toggle compact GPU"),
-        Binding("p", "toggle_theme", "Toggle theme"),
     ]
 
     CSS = """
     Screen {
         layout: vertical;
-        background: #1a1b26;
+        background: #05070c;
         color: #f8fafc;
     }
 
@@ -168,9 +167,9 @@ class RigMonitor(App):
     }
 
     .metric {
-        border: heavy #3b4261;
+        border: heavy #181c24;
         padding: 0 1;
-        background: #24283b;
+        background: #06080d;
         height: 1fr;
     }
 
@@ -206,10 +205,10 @@ class RigMonitor(App):
     }
 
     .panel {
-        border: heavy #3b4261;
+        border: heavy #181c24;
         padding: 1 2;
         margin: 0 1 1 0;
-        background: #24283b;
+        background: #06080d;
     }
 
     #gpu_box {
@@ -217,14 +216,14 @@ class RigMonitor(App):
     }
 
     Header {
-        background: #1f2335;
-        color: #c0caf5;
+        background: #05070c;
+        color: #d1d5db;
         text-style: bold;
     }
 
     Footer {
-        background: #1f2335;
-        color: #a9b1d6;
+        background: #05070c;
+        color: #9ca3af;
     }
 
     #proc_box {
@@ -265,7 +264,6 @@ class RigMonitor(App):
         self.force_wall_mode = True
         self.compact_core_density = True
         self.force_compact_gpu = False
-        self.dark_chrome = False
         self.last_net = psutil.net_io_counters()
         self.last_disk = psutil.disk_io_counters()
         self.last_ts = time.time()
@@ -311,34 +309,6 @@ class RigMonitor(App):
 
     def action_toggle_compact_gpu(self) -> None:
         self.force_compact_gpu = not self.force_compact_gpu
-        self.refresh_stats()
-
-    def action_toggle_theme(self) -> None:
-        self.dark_chrome = not self.dark_chrome
-        if self.dark_chrome:
-            self.screen.styles.background = '#05070c'
-            self.query('Header').first().styles.background = '#05070c'
-            self.query('Header').first().styles.color = '#d1d5db'
-            self.query('Footer').first().styles.background = '#05070c'
-            self.query('Footer').first().styles.color = '#9ca3af'
-            for w in self.query('.metric'):
-                w.styles.background = '#06080d'
-                w.styles.border = ('heavy', '#181c24')
-            for w in self.query('.panel'):
-                w.styles.background = '#06080d'
-                w.styles.border = ('heavy', '#181c24')
-        else:
-            self.screen.styles.background = '#1a1b26'
-            self.query('Header').first().styles.background = '#1f2335'
-            self.query('Header').first().styles.color = '#c0caf5'
-            self.query('Footer').first().styles.background = '#1f2335'
-            self.query('Footer').first().styles.color = '#a9b1d6'
-            for w in self.query('.metric'):
-                w.styles.background = '#24283b'
-                w.styles.border = ('heavy', '#3b4261')
-            for w in self.query('.panel'):
-                w.styles.background = '#24283b'
-                w.styles.border = ('heavy', '#3b4261')
         self.refresh_stats()
 
     def get_gpu_rows(self) -> List[GpuRow]:
