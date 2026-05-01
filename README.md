@@ -48,16 +48,24 @@ That means tracking:
 - Python 3
 - NVIDIA GPU drivers for GPU stats
 
-## Install
+## One-command install
+
+Clone the repo and install dependencies:
 
 ```bash
-python3 -m pip install --user -r requirements.txt
+git clone https://github.com/ftwlien/rig-monitor.git && cd rig-monitor && python3 -m pip install --user -r requirements.txt
 ```
 
 ## Run
 
 ```bash
-python3 app.py
+cd ~/rig-monitor && python3 app.py
+```
+
+If you have not cloned it yet, this full one-liner also works:
+
+```bash
+git clone https://github.com/ftwlien/rig-monitor.git && cd rig-monitor && python3 -m pip install --user -r requirements.txt && python3 app.py
 ```
 
 ## Notes
