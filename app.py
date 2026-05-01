@@ -271,6 +271,9 @@ class RigMonitor(App):
     def is_wall_mode(self) -> bool:
         return self.force_wall_mode or self.size.width < 170 or self.size.height < 48
 
+    def is_compact_wall_gpu(self) -> bool:
+        return self.size.width < 120 or self.size.height < 30
+
     def is_tiny(self) -> bool:
         return self.size.width < 125 or self.size.height < 34
 
@@ -443,6 +446,7 @@ class RigMonitor(App):
     def refresh_stats(self) -> None:
         compact = self.is_compact()
         wall_mode = self.is_wall_mode()
+        compact_wall_gpu = self.is_compact_wall_gpu()
         tiny = self.is_tiny()
         now = time.time()
         dt = max(now - self.last_ts, 0.0001)
@@ -587,8 +591,12 @@ class RigMonitor(App):
                     )
                 elif wall_mode:
                     gpu_lines.append(f"[b cyan]GPU {g.index}[/b cyan] [bright_white]{truncate_middle(gpu_name, 22)}[/bright_white]")
-                    gpu_lines.append(f"UTIL [{gpu_color}]{g.util:>3}%[/{gpu_color}] [{gpu_color}]{bar(g.util, 100, 16)}[/{gpu_color}]")
-                    gpu_lines.append(f"VRAM [{mem_color}]{g.mem_util_pct:>3.0f}%[/{mem_color}] [{mem_color}]{bar(g.mem_util_pct, 100, 16)}[/{mem_color}]")
+                    if compact_wall_gpu:
+                        gpu_lines.append(f"UTIL [{gpu_color}]{g.util:>3}%[/{gpu_color}] [{gpu_color}]{bar(g.util, 100, 12)}[/{gpu_color}]")
+                        gpu_lines.append(f"VRAM [{mem_color}]{g.mem_util_pct:>3.0f}%[/{mem_color}] [{mem_color}]{bar(g.mem_util_pct, 100, 12)}[/{mem_color}]")
+                    else:
+                        gpu_lines.append(f"UTIL [{gpu_color}]{g.util:>3}%[/{gpu_color}] [{gpu_color}]{bar(g.util, 100, 20)}[/{gpu_color}]")
+                        gpu_lines.append(f"VRAM [{mem_color}]{g.mem_util_pct:>3.0f}%[/{mem_color}] [{mem_color}]{bar(g.mem_util_pct, 100, 20)}[/{mem_color}]")
                     gpu_lines.append(f"TEMP [yellow]{g.temp_c}°C[/yellow]  [magenta]{g.power_w:.0f}W[/magenta]  [green]{g.mem_used_gb:.1f}/{g.mem_total_gb:.1f}G[/green]")
                 elif compact:
                     gpu_lines.append(f"[b cyan]GPU {g.index}[/b cyan] [bright_white]{gpu_name}[/bright_white]")
