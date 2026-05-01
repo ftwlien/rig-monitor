@@ -7,7 +7,7 @@ from typing import Deque, List
 
 import psutil
 from textual.app import App, ComposeResult
-from textual.containers import Grid, Horizontal, Vertical
+from textual.containers import Grid, Horizontal, Vertical, VerticalScroll
 from textual.reactive import reactive
 from textual.widgets import Footer, Header, Static
 from textual.binding import Binding
@@ -235,10 +235,12 @@ class RigMonitor(App):
         with Horizontal(id="main"):
             with Vertical(id="leftpane"):
                 with Horizontal(id="body_split"):
-                    self.cpu_cores_box = Static("[b]CPU CORES[/b]", classes="panel", id="cpu_cores_box")
-                    self.gpu_box = Static("[b]GPU COMMAND CENTER[/b]", classes="panel", id="gpu_box")
-                    yield self.cpu_cores_box
-                    yield self.gpu_box
+                    with VerticalScroll(classes="panel", id="cpu_cores_box"):
+                        self.cpu_cores_content = Static("[b]CPU CORES[/b]")
+                        yield self.cpu_cores_content
+                    with VerticalScroll(classes="panel", id="gpu_box"):
+                        self.gpu_content = Static("[b]GPU COMMAND CENTER[/b]")
+                        yield self.gpu_content
             with Vertical(id="rightpane"):
                 self.proc_box = Static("[b]TOP PROCESSES[/b]", classes="panel", id="proc_box")
                 yield self.proc_box
@@ -247,9 +249,9 @@ class RigMonitor(App):
     def on_mount(self) -> None:
         self.cpu_name = get_cpu_name()
         self.cpu_core_count = psutil.cpu_count(logical=True) or 0
-        self.show_all_cores = False
+        self.show_all_cores = True
         self.force_wall_mode = False
-        self.compact_core_density = False
+        self.compact_core_density = True
         self.force_compact_gpu = False
         self.last_net = psutil.net_io_counters()
         self.last_disk = psutil.disk_io_counters()
@@ -640,7 +642,7 @@ class RigMonitor(App):
             gpu_lines.append("NVML unavailable")
             gpu_lines.append("")
 
-        self.cpu_cores_box.update("\n".join(core_lines))
+        self.cpu_cores_content.update("\n".join(core_lines))
 
         gpu_body = []
         gpu_body.extend(gpu_lines)
@@ -676,7 +678,7 @@ class RigMonitor(App):
                     )
         else:
             gpu_body.append("none")
-        self.gpu_box.update("\n".join(gpu_body))
+        self.gpu_content.update("\n".join(gpu_body))
 
         self.query_one('#leftpane').styles.width = '7fr'
         if wall_mode:
