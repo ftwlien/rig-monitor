@@ -614,15 +614,15 @@ class RigMonitor(App):
                 mem_color = color_for_pct(g.mem_util_pct)
                 temp_flag = "[red]HOT[/red]" if g.temp_c >= 80 else ("[yellow]WARM[/yellow]" if g.temp_c >= 65 else "[green]OK[/green]")
                 gpu_name = g.name if compact else truncate_middle(g.name, 40)
-                if tiny:
-                    gpu_lines.append(
-                        f"[b cyan]G{g.index}[/b cyan] {truncate_middle(gpu_name, 20)}  [{gpu_color}]{g.util:>3}%[/{gpu_color}]  [{mem_color}]{g.mem_util_pct:>3.0f}% mem[/{mem_color}]  [yellow]{g.temp_c}°[/yellow]  [magenta]{g.power_w:.0f}W[/magenta]"
-                    )
-                elif wall_mode:
+                if wall_mode and not self.force_compact_gpu:
                     gpu_lines.append(f"[b cyan]GPU {g.index}[/b cyan] [bright_white]{truncate_middle(gpu_name, 22)}[/bright_white]")
                     gpu_lines.append(f"UTIL [{gpu_color}]{g.util:>3}%[/{gpu_color}] [{gpu_color}]{bar(g.util, 100, 20)}[/{gpu_color}]")
                     gpu_lines.append(f"VRAM [{mem_color}]{g.mem_util_pct:>3.0f}%[/{mem_color}] [{mem_color}]{bar(g.mem_util_pct, 100, 20)}[/{mem_color}]")
                     gpu_lines.append(f"TEMP [yellow]{g.temp_c}°C[/yellow]  [magenta]{g.power_w:.0f}W[/magenta]  [green]{g.mem_used_gb:.1f}/{g.mem_total_gb:.1f}G[/green]")
+                elif tiny or (wall_mode and self.force_compact_gpu):
+                    gpu_lines.append(
+                        f"[b cyan]G{g.index}[/b cyan] {truncate_middle(gpu_name, 20)}  [{gpu_color}]{g.util:>3}%[/{gpu_color}]  [{mem_color}]{g.mem_util_pct:>3.0f}% mem[/{mem_color}]  [yellow]{g.temp_c}°[/yellow]  [magenta]{g.power_w:.0f}W[/magenta]"
+                    )
                 elif compact:
                     gpu_lines.append(f"[b cyan]GPU {g.index}[/b cyan] [bright_white]{gpu_name}[/bright_white]")
                     gpu_lines.append(f"[{gpu_color}]{g.util:>3}%[/{gpu_color}] [{gpu_color}]{bar(g.util, 100, 12)}[/{gpu_color}] [{mem_color}]{g.mem_util_pct:>3.0f}% mem[/{mem_color}]")
