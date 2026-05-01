@@ -146,6 +146,7 @@ class RigMonitor(App):
     BINDINGS = [
         Binding("c", "toggle_cores", "Toggle cores"),
         Binding("w", "toggle_wall_mode", "Toggle wall mode"),
+        Binding("f", "toggle_core_density", "Toggle core density"),
     ]
 
     CSS = """
@@ -188,12 +189,12 @@ class RigMonitor(App):
     }
 
     #cpu_cores_box {
-        width: 3fr;
+        width: 2fr;
         height: 1fr;
     }
 
     #gpu_box {
-        width: 4fr;
+        width: 5fr;
         height: 1fr;
     }
 
@@ -247,6 +248,7 @@ class RigMonitor(App):
         self.cpu_core_count = psutil.cpu_count(logical=True) or 0
         self.show_all_cores = False
         self.force_wall_mode = False
+        self.compact_core_density = False
         self.last_net = psutil.net_io_counters()
         self.last_disk = psutil.disk_io_counters()
         self.last_ts = time.time()
@@ -278,6 +280,10 @@ class RigMonitor(App):
 
     def action_toggle_wall_mode(self) -> None:
         self.force_wall_mode = not self.force_wall_mode
+        self.refresh_stats()
+
+    def action_toggle_core_density(self) -> None:
+        self.compact_core_density = not self.compact_core_density
         self.refresh_stats()
 
     def get_gpu_rows(self) -> List[GpuRow]:
@@ -549,17 +555,21 @@ class RigMonitor(App):
             default_limit = 4 if wall_mode else (8 if compact else 16)
             max_cores = len(cpu_per_core) if self.show_all_cores else min(len(cpu_per_core), default_limit)
             shown = cpu_per_core[:max_cores]
-            cols = 2 if wall_mode else (2 if compact else 4)
+            cols = 4 if self.compact_core_density else (2 if wall_mode else (2 if compact else 4))
             for start in range(0, len(shown), cols):
                 chunk = shown[start:start + cols]
                 row = []
                 for idx, val in enumerate(chunk, start=start):
                     c = color_for_pct(val)
-                    row.append(f"C{idx:02d} [{c}]{val:>3.0f}%[/{c}] [{c}]{bar(val, 100, 6 if compact else 8)}[/{c}]")
+                    if self.compact_core_density:
+                        row.append(f"C{idx:02d} [{c}]{val:>3.0f}%[/{c}]")
+                    else:
+                        row.append(f"C{idx:02d} [{c}]{val:>3.0f}%[/{c}] [{c}]{bar(val, 100, 6 if compact else 8)}[/{c}]")
                 core_lines.append("   ".join(row))
             if len(cpu_per_core) > default_limit:
                 mode = "all" if self.show_all_cores else f"{default_limit}"
-                core_lines.append(f"press c → showing {mode}/{len(cpu_per_core)} cores")
+                density = 'dense' if self.compact_core_density else 'normal'
+                core_lines.append(f"c:{mode}/{len(cpu_per_core)}  f:{density}")
         else:
             core_lines.append("no per-core data")
 
