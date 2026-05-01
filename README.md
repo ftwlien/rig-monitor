@@ -50,22 +50,24 @@ That means tracking:
 
 ## One-command install
 
-Clone the repo and install dependencies:
+Clone, install dependencies, and add a `rig-monitor` launcher:
 
 ```bash
-git clone https://github.com/ftwlien/rig-monitor.git && cd rig-monitor && python3 -m pip install --user -r requirements.txt
+git clone https://github.com/ftwlien/rig-monitor.git ~/rig-monitor && bash ~/rig-monitor/scripts/install.sh
 ```
 
-## Run
+After install, you can run:
+
+```bash
+rig-monitor
+```
+
+If `~/.local/bin` is not already on your `PATH`, the installer will tell you what to add.
+
+## Manual run
 
 ```bash
 cd ~/rig-monitor && python3 app.py
-```
-
-If you have not cloned it yet, this full one-liner also works:
-
-```bash
-git clone https://github.com/ftwlien/rig-monitor.git && cd rig-monitor && python3 -m pip install --user -r requirements.txt && python3 app.py
 ```
 
 ## Notes
