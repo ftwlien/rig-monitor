@@ -167,9 +167,9 @@ class RigMonitor(App):
     }
 
     .metric {
-        border: heavy #38bdf8;
+        border: heavy #2a2f3a;
         padding: 0 1;
-        background: #0b1222;
+        background: #080b12;
         height: 1fr;
     }
 
@@ -205,10 +205,10 @@ class RigMonitor(App):
     }
 
     .panel {
-        border: heavy #475569;
+        border: heavy #2a2f3a;
         padding: 1 2;
         margin: 0 1 1 0;
-        background: #0b1020;
+        background: #080b12;
     }
 
     #gpu_box {
@@ -250,7 +250,7 @@ class RigMonitor(App):
         self.cpu_name = get_cpu_name()
         self.cpu_core_count = psutil.cpu_count(logical=True) or 0
         self.show_all_cores = True
-        self.force_wall_mode = False
+        self.force_wall_mode = True
         self.compact_core_density = True
         self.force_compact_gpu = False
         self.last_net = psutil.net_io_counters()
