@@ -273,7 +273,7 @@ class RigMonitor(App):
         return self.size.width < 150 or self.size.height < 42
 
     def is_wall_mode(self) -> bool:
-        return self.force_wall_mode or self.size.width < 170 or self.size.height < 48
+        return self.force_wall_mode
 
     def is_compact_wall_gpu(self) -> bool:
         return self.force_compact_gpu
@@ -481,7 +481,7 @@ class RigMonitor(App):
         self.disk_write_hist.append(write_mb)
         self.cpu_hist.append(cpu)
 
-        mode_tag = " [WALL]" if wall_mode else ""
+        mode_tag = " [WALL]" if wall_mode else " [STD]"
         if self.force_compact_gpu:
             mode_tag += " [GPU-C]"
         cpu_title = truncate_middle(self.cpu_name, 28 if compact else 42)
