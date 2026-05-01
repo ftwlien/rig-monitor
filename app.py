@@ -153,7 +153,7 @@ class RigMonitor(App):
     CSS = """
     Screen {
         layout: vertical;
-        background: #05070c;
+        background: #050816;
         color: #f8fafc;
     }
 
@@ -167,9 +167,9 @@ class RigMonitor(App):
     }
 
     .metric {
-        border: heavy #181c24;
+        border: heavy #38bdf8;
         padding: 0 1;
-        background: #06080d;
+        background: #0b1222;
         height: 1fr;
     }
 
@@ -205,25 +205,14 @@ class RigMonitor(App):
     }
 
     .panel {
-        border: heavy #181c24;
+        border: heavy #475569;
         padding: 1 2;
         margin: 0 1 1 0;
-        background: #06080d;
+        background: #0b1020;
     }
 
     #gpu_box {
         height: 1fr;
-    }
-
-    Header {
-        background: #05070c;
-        color: #d1d5db;
-        text-style: bold;
-    }
-
-    Footer {
-        background: #05070c;
-        color: #9ca3af;
     }
 
     #proc_box {
