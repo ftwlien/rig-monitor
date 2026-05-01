@@ -145,6 +145,7 @@ class MetricBox(Static):
 class RigMonitor(App):
     BINDINGS = [
         Binding("c", "toggle_cores", "Toggle cores"),
+        Binding("w", "toggle_wall_mode", "Toggle wall mode"),
     ]
 
     CSS = """
@@ -245,6 +246,7 @@ class RigMonitor(App):
         self.cpu_name = get_cpu_name()
         self.cpu_core_count = psutil.cpu_count(logical=True) or 0
         self.show_all_cores = False
+        self.force_wall_mode = False
         self.last_net = psutil.net_io_counters()
         self.last_disk = psutil.disk_io_counters()
         self.last_ts = time.time()
@@ -265,13 +267,17 @@ class RigMonitor(App):
         return self.size.width < 150 or self.size.height < 42
 
     def is_wall_mode(self) -> bool:
-        return self.size.width < 170 or self.size.height < 48
+        return self.force_wall_mode or self.size.width < 170 or self.size.height < 48
 
     def is_tiny(self) -> bool:
         return self.size.width < 125 or self.size.height < 34
 
     def action_toggle_cores(self) -> None:
         self.show_all_cores = not self.show_all_cores
+        self.refresh_stats()
+
+    def action_toggle_wall_mode(self) -> None:
+        self.force_wall_mode = not self.force_wall_mode
         self.refresh_stats()
 
     def get_gpu_rows(self) -> List[GpuRow]:
@@ -453,6 +459,7 @@ class RigMonitor(App):
         self.disk_write_hist.append(write_mb)
         self.cpu_hist.append(cpu)
 
+        mode_tag = " [WALL]" if wall_mode else ""
         cpu_title = truncate_middle(self.cpu_name, 28 if compact else 42)
         cpu_bar = bar(cpu, 100, 10 if compact else 16)
         ram_bar = bar(vm.percent, 100, 10 if compact else 16)
@@ -463,7 +470,7 @@ class RigMonitor(App):
             short_cpu = self.cpu_name.replace('AMD ', '').replace('Processor', '').strip()
             self.cpu_box.value = (
                 f"[{cpu_color}]{cpu:.0f}%[/{cpu_color}] [{cpu_color}]{bar(cpu, 100, 8)}[/{cpu_color}]\n"
-                f"{truncate_middle(short_cpu, 20)}"
+                f"{truncate_middle(short_cpu, 20)}{mode_tag}"
             )
             self.ram_box.value = (
                 f"[{ram_color}]{vm.percent:.0f}%[/{ram_color}] [{ram_color}]{bar(vm.percent, 100, 8)}[/{ram_color}]\n"
@@ -480,7 +487,7 @@ class RigMonitor(App):
         elif compact:
             self.cpu_box.value = (
                 f"[{cpu_color}]{cpu:.0f}%[/{cpu_color}] [{cpu_color}]{cpu_bar}[/{cpu_color}]\n"
-                f"[yellow]ld {load[0]:.1f}[/yellow]  {truncate_middle(cpu_title, 16)}"
+                f"[yellow]ld {load[0]:.1f}[/yellow]  {truncate_middle(cpu_title, 16)}{mode_tag}"
             )
             self.ram_box.value = (
                 f"[{ram_color}]{vm.percent:.0f}%[/{ram_color}] [{ram_color}]{ram_bar}[/{ram_color}]\n"
@@ -496,7 +503,7 @@ class RigMonitor(App):
             )
         else:
             self.cpu_box.value = (
-                f"{cpu_title}\n"
+                f"{cpu_title}{mode_tag}\n"
                 f"[{cpu_color}]{cpu:.0f}%[/{cpu_color}]  [{cpu_color}]{cpu_bar}[/{cpu_color}]\n"
                 f"[yellow]load {load[0]:.2f} {load[1]:.2f} {load[2]:.2f}[/yellow]\n"
                 f"{heat_sparkline(list(self.cpu_hist), width=24)}"
