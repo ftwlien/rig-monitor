@@ -647,26 +647,27 @@ class RigMonitor(App):
         gpu_body = []
         gpu_body.extend(gpu_lines)
         gpu_body.append("")
-        gpu_body.append("[b bright_white]GPU PROCESSES[/b bright_white]")
+        gpu_body.append("─" * 34)
+        gpu_body.append("[b bright_white]GPU WORKLOAD[/b bright_white]")
         if gpu_proc_rows:
             if wall_mode:
-                wall_gpu_proc_rows = gpu_proc_rows[:3]
-                gpu_body.append("TOP GPU PROCS")
+                wall_gpu_proc_rows = gpu_proc_rows[:2]
                 for row in wall_gpu_proc_rows:
-                    cmd = truncate_middle(row.cmd, 24)
                     gpu_body.append(
-                        f"G{row.gpu} [yellow]{row.mem_mib:>4.0f}M[/yellow] [cyan]{row.cpu_pct:>3.0f}%[/cyan] {cmd}"
+                        f"GPU{row.gpu}  [yellow]{row.mem_mib:>4.0f} MiB[/yellow]  [cyan]{row.cpu_pct:>3.0f}% CPU[/cyan]  [green]{row.ram_pct:>3.0f}% RAM[/green]"
                     )
+                    gpu_body.append(f"{truncate_middle(row.cmd, 44)}")
+                    gpu_body.append("")
                 if len(gpu_proc_rows) > len(wall_gpu_proc_rows):
-                    gpu_body.append(f"... {len(gpu_proc_rows) - len(wall_gpu_proc_rows)} more")
+                    gpu_body.append(f"... {len(gpu_proc_rows) - len(wall_gpu_proc_rows)} more gpu processes")
             elif compact:
-                compact_gpu_proc_rows = gpu_proc_rows[:3]
-                gpu_body.append("GPU PROCS")
+                compact_gpu_proc_rows = gpu_proc_rows[:2]
                 for row in compact_gpu_proc_rows:
-                    name = truncate_middle(row.name, 12)
                     gpu_body.append(
-                        f"[magenta]{row.gpu}[/magenta] [yellow]{row.mem_mib:>4.0f}M[/yellow] [cyan]{row.cpu_pct:>3.0f}%[/cyan] {name}"
+                        f"GPU{row.gpu}  [yellow]{row.mem_mib:>4.0f} MiB[/yellow]  [cyan]{row.cpu_pct:>3.0f}%[/cyan]"
                     )
+                    gpu_body.append(f"{truncate_middle(row.cmd, 30)}")
+                    gpu_body.append("")
                 if len(gpu_proc_rows) > len(compact_gpu_proc_rows):
                     gpu_body.append(f"... {len(gpu_proc_rows) - len(compact_gpu_proc_rows)} more")
             else:
@@ -677,7 +678,7 @@ class RigMonitor(App):
                         f"[magenta]{row.gpu}[/magenta]   {row.pid:<8} [yellow]{row.mem_mib:>6.0f}M[/yellow]  {row.mem_pct:>5.1f}  [cyan]{row.cpu_pct:>5.1f}[/cyan]  [green]{row.ram_pct:>5.1f}[/green]  {cmd}"
                     )
         else:
-            gpu_body.append("none")
+            gpu_body.append("idle")
         self.gpu_content.update("\n".join(gpu_body))
 
         self.query_one('#leftpane').styles.width = '7fr'
