@@ -542,12 +542,12 @@ class RigMonitor(App):
                 f"[green]{vm.used / 1024**3:.1f}/{vm.total / 1024**3:.1f}G[/green] free [cyan]{vm.available / 1024**3:.1f}G[/cyan]"
             )
             self.net_box.value = (
-                f"[bright_blue]↓ {format_rate(down_mb)}[/bright_blue]\n"
-                f"[cyan]↑ {format_rate(up_mb)}[/cyan]"
+                f"[bright_blue]↓ {format_rate(down_mb)}[/bright_blue]  [cyan]↑ {format_rate(up_mb)}[/cyan]\n"
+                f"[bright_blue]{sparkline(list(self.net_down_hist), max_value=net_peak, width=14)}[/bright_blue][cyan]{sparkline(list(self.net_up_hist), max_value=net_peak, width=14)}[/cyan]"
             )
             self.disk_box.value = (
-                f"[bright_blue]R {format_rate(read_mb)}[/bright_blue]\n"
-                f"[cyan]W {format_rate(write_mb)}[/cyan]"
+                f"[bright_blue]R {format_rate(read_mb)}[/bright_blue]  [cyan]W {format_rate(write_mb)}[/cyan]\n"
+                f"[bright_blue]{sparkline(list(self.disk_read_hist), width=14)}[/bright_blue][cyan]{sparkline(list(self.disk_write_hist), width=14)}[/cyan]"
             )
         elif compact:
             self.cpu_box.value = (
@@ -559,12 +559,12 @@ class RigMonitor(App):
                 f"[green]{vm.used / 1024**3:.1f}/{vm.total / 1024**3:.1f}G[/green] free [cyan]{vm.available / 1024**3:.1f}G[/cyan]"
             )
             self.net_box.value = (
-                f"[bright_blue]↓ {format_rate(down_mb)}[/bright_blue]\n"
-                f"[cyan]↑ {format_rate(up_mb)}[/cyan]"
+                f"[bright_blue]↓ {format_rate(down_mb)}[/bright_blue]  [cyan]↑ {format_rate(up_mb)}[/cyan]\n"
+                f"[bright_blue]{sparkline(list(self.net_down_hist), max_value=net_peak, width=12)}[/bright_blue][cyan]{sparkline(list(self.net_up_hist), max_value=net_peak, width=12)}[/cyan]"
             )
             self.disk_box.value = (
-                f"[bright_blue]R {format_rate(read_mb)}[/bright_blue]\n"
-                f"[cyan]W {format_rate(write_mb)}[/cyan]"
+                f"[bright_blue]R {format_rate(read_mb)}[/bright_blue]  [cyan]W {format_rate(write_mb)}[/cyan]\n"
+                f"[bright_blue]{sparkline(list(self.disk_read_hist), width=12)}[/bright_blue][cyan]{sparkline(list(self.disk_write_hist), width=12)}[/cyan]"
             )
         else:
             self.cpu_box.value = (
