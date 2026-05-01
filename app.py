@@ -264,6 +264,9 @@ class RigMonitor(App):
     def is_compact(self) -> bool:
         return self.size.width < 150 or self.size.height < 42
 
+    def is_wall_mode(self) -> bool:
+        return self.size.width < 170 or self.size.height < 48
+
     def is_tiny(self) -> bool:
         return self.size.width < 125 or self.size.height < 34
 
@@ -427,6 +430,7 @@ class RigMonitor(App):
 
     def refresh_stats(self) -> None:
         compact = self.is_compact()
+        wall_mode = self.is_wall_mode()
         tiny = self.is_tiny()
         now = time.time()
         dt = max(now - self.last_ts, 0.0001)
@@ -535,10 +539,10 @@ class RigMonitor(App):
 
         core_lines = ["[b bright_white]CPU CORES[/b bright_white]"]
         if cpu_per_core:
-            default_limit = 4 if tiny else (8 if compact else 16)
+            default_limit = 4 if wall_mode else (8 if compact else 16)
             max_cores = len(cpu_per_core) if self.show_all_cores else min(len(cpu_per_core), default_limit)
             shown = cpu_per_core[:max_cores]
-            cols = 2 if compact else 4
+            cols = 2 if wall_mode else (2 if compact else 4)
             for start in range(0, len(shown), cols):
                 chunk = shown[start:start + cols]
                 row = []
@@ -553,7 +557,7 @@ class RigMonitor(App):
             core_lines.append("no per-core data")
 
         if gpu_rows:
-            gpu_row_limit = 4 if compact else len(gpu_rows)
+            gpu_row_limit = 4 if wall_mode else (4 if compact else len(gpu_rows))
             visible_gpu_rows = gpu_rows[:gpu_row_limit]
             for g in visible_gpu_rows:
                 gpu_color = color_for_pct(g.util)
@@ -564,6 +568,10 @@ class RigMonitor(App):
                     gpu_lines.append(
                         f"[b cyan]G{g.index}[/b cyan] {truncate_middle(gpu_name, 20)}  [{gpu_color}]{g.util:>3}%[/{gpu_color}]  [{mem_color}]{g.mem_util_pct:>3.0f}% mem[/{mem_color}]  [yellow]{g.temp_c}°[/yellow]  [magenta]{g.power_w:.0f}W[/magenta]"
                     )
+                elif wall_mode:
+                    gpu_lines.append(f"[b cyan]GPU {g.index}[/b cyan] [bright_white]{truncate_middle(gpu_name, 22)}[/bright_white]")
+                    gpu_lines.append(f"UTIL [{gpu_color}]{g.util:>3}%[/{gpu_color}] [{gpu_color}]{bar(g.util, 100, 16)}[/{gpu_color}]  VRAM [{mem_color}]{g.mem_util_pct:>3.0f}%[/{mem_color}] [{mem_color}]{bar(g.mem_util_pct, 100, 10)}[/{mem_color}]")
+                    gpu_lines.append(f"TEMP [yellow]{g.temp_c}°C[/yellow]  [magenta]{g.power_w:.0f}W[/magenta]  [green]{g.mem_used_gb:.1f}/{g.mem_total_gb:.1f}G[/green]")
                 elif compact:
                     gpu_lines.append(f"[b cyan]GPU {g.index}[/b cyan] [bright_white]{gpu_name}[/bright_white]")
                     gpu_lines.append(f"[{gpu_color}]{g.util:>3}%[/{gpu_color}] [{gpu_color}]{bar(g.util, 100, 12)}[/{gpu_color}] [{mem_color}]{g.mem_util_pct:>3.0f}% mem[/{mem_color}]")
@@ -588,7 +596,17 @@ class RigMonitor(App):
         gpu_body.append("")
         gpu_body.append("[b bright_white]GPU PROCESSES[/b bright_white]")
         if gpu_proc_rows:
-            if compact:
+            if wall_mode:
+                wall_gpu_proc_rows = gpu_proc_rows[:3]
+                gpu_body.append("TOP GPU PROCS")
+                for row in wall_gpu_proc_rows:
+                    cmd = truncate_middle(row.cmd, 24)
+                    gpu_body.append(
+                        f"G{row.gpu} [yellow]{row.mem_mib:>4.0f}M[/yellow] [cyan]{row.cpu_pct:>3.0f}%[/cyan] {cmd}"
+                    )
+                if len(gpu_proc_rows) > len(wall_gpu_proc_rows):
+                    gpu_body.append(f"... {len(gpu_proc_rows) - len(wall_gpu_proc_rows)} more")
+            elif compact:
                 compact_gpu_proc_rows = gpu_proc_rows[:3]
                 gpu_body.append("GPU PROCS")
                 for row in compact_gpu_proc_rows:
@@ -610,17 +628,21 @@ class RigMonitor(App):
         self.gpu_box.update("\n".join(gpu_body))
 
         self.query_one('#leftpane').styles.width = '7fr'
-        self.query_one('#rightpane').styles.display = 'block'
-        self.query_one('#rightpane').styles.width = '3fr'
-        procs = self.cached_top_procs
-        proc_lines = ["[b bright_white]TOP PROCESSES[/b bright_white]", "", "PID      NAME           CPU%  MEM%" if compact else "PID      NAME                 CPU%   MEM%"]
-        display_procs = procs[:8] if compact else procs
-        for pid, name, cpu_p, mem_p in display_procs:
-            if compact:
-                proc_lines.append(f"{pid:<8} {name:<14} [cyan]{cpu_p:>4.1f}[/cyan] [green]{mem_p:>5.1f}[/green]")
-            else:
-                proc_lines.append(f"{pid:<8} {name:<20} [cyan]{cpu_p:>5.1f}[/cyan] [green]{mem_p:>6.1f}[/green]")
-        self.proc_box.update("\n".join(proc_lines))
+        if wall_mode:
+            self.query_one('#rightpane').styles.display = 'none'
+            self.proc_box.update('[b bright_white]TOP PROCESSES[/b bright_white]\n\nhidden in wall mode')
+        else:
+            self.query_one('#rightpane').styles.display = 'block'
+            self.query_one('#rightpane').styles.width = '3fr'
+            procs = self.cached_top_procs
+            proc_lines = ["[b bright_white]TOP PROCESSES[/b bright_white]", "", "PID      NAME           CPU%  MEM%" if compact else "PID      NAME                 CPU%   MEM%"]
+            display_procs = procs[:8] if compact else procs
+            for pid, name, cpu_p, mem_p in display_procs:
+                if compact:
+                    proc_lines.append(f"{pid:<8} {name:<14} [cyan]{cpu_p:>4.1f}[/cyan] [green]{mem_p:>5.1f}[/green]")
+                else:
+                    proc_lines.append(f"{pid:<8} {name:<20} [cyan]{cpu_p:>5.1f}[/cyan] [green]{mem_p:>6.1f}[/green]")
+            self.proc_box.update("\n".join(proc_lines))
 
         self.last_net = net
         self.last_disk = disk
