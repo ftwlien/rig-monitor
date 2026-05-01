@@ -169,7 +169,7 @@ class RigMonitor(App):
     }
 
     .metric {
-        border: heavy #38bdf8;
+        border: heavy #475569;
         padding: 0 1;
         background: #0b1222;
         height: 1fr;
@@ -318,7 +318,7 @@ class RigMonitor(App):
             self.screen.styles.background = '#050816'
             for w in self.query('.metric'):
                 w.styles.background = '#0b1222'
-                w.styles.border = ('heavy', '#38bdf8')
+                w.styles.border = ('heavy', '#475569')
             for w in self.query('.panel'):
                 w.styles.background = '#0b1020'
                 w.styles.border = ('heavy', '#475569')
