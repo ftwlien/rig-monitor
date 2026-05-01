@@ -272,10 +272,10 @@ class RigMonitor(App):
         return self.force_wall_mode or self.size.width < 170 or self.size.height < 48
 
     def is_compact_wall_gpu(self) -> bool:
-        return self.size.width < 120 or self.size.height < 30
+        return self.size.width < 95 or self.size.height < 24
 
     def is_medium_wall_gpu(self) -> bool:
-        return self.size.width < 145 or self.size.height < 38
+        return self.size.width < 115 or self.size.height < 28
 
     def is_tiny(self) -> bool:
         return self.size.width < 125 or self.size.height < 34
