@@ -543,9 +543,10 @@ class RigMonitor(App):
                 f"[cyan]W {format_rate(write_mb)}[/cyan]"
             )
         else:
+            full_cpu_label = truncate_middle(self.cpu_name, 34)
             self.cpu_box.value = (
-                f"[{cpu_color}]{cpu:.0f}%[/{cpu_color}]  [{cpu_color}]{bar(cpu, 100, 12)}[/{cpu_color}]\n"
-                f"[yellow]ld {load[0]:.1f}[/yellow]  {cpu_short}{mode_tag}"
+                f"{full_cpu_label}\n"
+                f"[yellow]load {load[0]:.1f} {load[1]:.1f} {load[2]:.1f}[/yellow]"
             )
             self.ram_box.value = (
                 f"[{ram_color}]{vm.percent:.0f}%[/{ram_color}]  [{ram_color}]{bar(vm.percent, 100, 12)}[/{ram_color}]\n"
