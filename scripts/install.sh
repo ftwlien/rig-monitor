@@ -71,18 +71,18 @@ else
 fi
 rm -f "$SUDOERS_TMP"
 
-cat > "$REPO_DIR/.gputemps-wrapper.sh" <<'WRAP'
+cat > "${HOME}/.gputemps-wrapper.sh" <<'WRAP'
 #!/usr/bin/env bash
 set -euo pipefail
 exec sudo /usr/local/bin/gputemps "$@"
 WRAP
-chmod +x "$REPO_DIR/.gputemps-wrapper.sh"
+chmod +x "${HOME}/.gputemps-wrapper.sh"
 
 echo "Installed rig-monitor launcher to $LAUNCHER"
 echo "Installed gputemps to /usr/local/bin/gputemps"
 echo "Installed sudoers rule: /etc/sudoers.d/rig-monitor-gputemps"
 echo
-if "$REPO_DIR/.gputemps-wrapper.sh" --json --once >/dev/null 2>&1; then
+if "${HOME}/.gputemps-wrapper.sh" --json --once >/dev/null 2>&1; then
   echo "gputemps probe check: OK"
 else
   echo "gputemps probe check: installed, but runtime probe did not return cleanly right now"
