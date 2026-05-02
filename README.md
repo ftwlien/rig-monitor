@@ -77,8 +77,7 @@ After install, you can run:
 rig-monitor
 ```
 
-If you install as a normal user, the launcher is placed in `~/.local/bin`.
-If you install as `root`, the installer also places a global launcher in `/usr/local/bin/rig-monitor` so the command works immediately.
+The installer places a user-local launcher in `~/.local/bin` and also attempts to install a global launcher at `/usr/local/bin/rig-monitor` so the command works immediately after install.
 
 If `~/.local/bin` is not already on your `PATH`, the installer will tell you what to add.
 

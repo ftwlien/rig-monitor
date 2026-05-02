@@ -71,23 +71,27 @@ fi
 cd "$REPO_DIR"
 python3 -m pip install --user -r requirements.txt
 mkdir -p "$BIN_DIR"
-cat > "$LAUNCHER" <<'LAUNCH'
+cat > "$LAUNCHER" <<LAUNCH
 #!/usr/bin/env bash
 set -euo pipefail
-cd "$HOME/rig-monitor"
+cd "$REPO_DIR"
 exec python3 app.py "$@"
 LAUNCH
 chmod +x "$LAUNCHER"
 
-if [ "$(id -u)" -eq 0 ]; then
-  cat > "$GLOBAL_LAUNCHER" <<'LAUNCH'
+GLOBAL_TMP="$(mktemp)"
+cat > "$GLOBAL_TMP" <<LAUNCH
 #!/usr/bin/env bash
 set -euo pipefail
-cd /root/rig-monitor
+cd "$REPO_DIR"
 exec python3 app.py "$@"
 LAUNCH
-  chmod +x "$GLOBAL_LAUNCHER"
+if [ -w /usr/local/bin ]; then
+  install -m 0755 "$GLOBAL_TMP" "$GLOBAL_LAUNCHER"
+else
+  sudo install -m 0755 "$GLOBAL_TMP" "$GLOBAL_LAUNCHER"
 fi
+rm -f "$GLOBAL_TMP"
 
 if [ ! -d "$GPU_TEMP_REPO/.git" ]; then
   git clone "$GPU_TEMP_REPO_URL" "$GPU_TEMP_REPO"
@@ -133,9 +137,7 @@ WRAP
 chmod +x "${HOME}/.gputemps-wrapper.sh"
 
 echo "Installed rig-monitor launcher to $LAUNCHER"
-if [ "$(id -u)" -eq 0 ]; then
-  echo "Installed global rig-monitor launcher to $GLOBAL_LAUNCHER"
-fi
+echo "Installed global rig-monitor launcher to $GLOBAL_LAUNCHER"
 echo "Installed gputemps to /usr/local/bin/gputemps"
 echo "Installed sudoers rule: /etc/sudoers.d/rig-monitor-gputemps"
 echo
@@ -146,14 +148,7 @@ else
 fi
 
 echo
-if [ "$(id -u)" -eq 0 ]; then
-  echo "You can now run: rig-monitor"
-elif echo "$PATH" | tr ':' '\n' | grep -qx "$BIN_DIR"; then
-  echo "You can now run: rig-monitor"
-else
-  echo "$BIN_DIR is not on PATH yet."
-  echo "Add this to your shell config:"
-  echo 'export PATH="$HOME/.local/bin:$PATH"'
-  echo "Then restart your shell or run: source ~/.bashrc"
-  echo "Or run it directly with: $LAUNCHER"
+echo "You can now run: rig-monitor"
+if ! echo "$PATH" | tr ':' '\n' | grep -qx "$BIN_DIR"; then
+  echo "User-local launcher also installed at: $LAUNCHER"
 fi
