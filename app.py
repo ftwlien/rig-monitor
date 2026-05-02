@@ -281,6 +281,7 @@ class RigMonitor(App):
         self.cached_gpu_proc_rows: List[GpuProcRow] = []
         self.cached_top_procs: List[tuple] = []
         self.last_proc_refresh = 0.0
+        self._apply_scrollbar_style()
         psutil.cpu_percent(interval=None, percpu=True)
         self.set_interval(1.0, self.refresh_stats)
 
