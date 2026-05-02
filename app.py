@@ -266,7 +266,7 @@ class RigMonitor(App):
         self.compact_core_density = True
         self.force_compact_gpu = False
         self.black_mode = False
-        self.scrollbars_visible = True
+        self.scrollbars_visible = False
         self.theme = 'ansi-dark'
         self.last_net = psutil.net_io_counters()
         self.last_disk = psutil.disk_io_counters()

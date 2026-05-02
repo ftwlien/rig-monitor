@@ -92,6 +92,10 @@ cd ~/rig-monitor && python3 app.py
 - `b` → toggle **black mode**
   - optional darker/stripped look
   - default remains the classic boxed monitor chrome
+- `p` → toggle **scrollbars**
+  - scrollbars are hidden by default
+  - press `p` when you want them visible
+  - works independently of black mode
 
 ## Current layout behavior
 
