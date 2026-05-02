@@ -159,6 +159,7 @@ class RigMonitor(App):
         Binding("f", "toggle_core_density", "Toggle core density"),
         Binding("g", "toggle_compact_gpu", "Toggle compact GPU"),
         Binding("b", "toggle_black_mode", "Toggle black mode"),
+        Binding("p", "toggle_scrollbars", "Toggle scrollbars"),
     ]
 
     CSS = """
@@ -265,6 +266,7 @@ class RigMonitor(App):
         self.compact_core_density = True
         self.force_compact_gpu = False
         self.black_mode = False
+        self.scrollbars_visible = True
         self.theme = 'ansi-dark'
         self.last_net = psutil.net_io_counters()
         self.last_disk = psutil.disk_io_counters()
@@ -313,6 +315,44 @@ class RigMonitor(App):
         self.force_compact_gpu = not self.force_compact_gpu
         self.refresh_stats()
 
+    def _apply_scrollbar_style(self) -> None:
+        for w in self.query(VerticalScroll):
+            if self.scrollbars_visible:
+                w.styles.scrollbar_size_vertical = 1
+                w.styles.scrollbar_size_horizontal = 1
+                if self.black_mode:
+                    w.styles.scrollbar_background = '#06080d'
+                    w.styles.scrollbar_color = '#0a0d12'
+                    w.styles.scrollbar_color_hover = '#11151c'
+                    w.styles.scrollbar_color_active = '#1a1f28'
+                    w.styles.scrollbar_corner_color = '#06080d'
+                else:
+                    w.styles.scrollbar_background = '#0b1020'
+                    w.styles.scrollbar_color = '#1d4ed8'
+                    w.styles.scrollbar_color_hover = '#2563eb'
+                    w.styles.scrollbar_color_active = '#3b82f6'
+                    w.styles.scrollbar_corner_color = '#0b1020'
+            else:
+                w.styles.scrollbar_size_vertical = 0
+                w.styles.scrollbar_size_horizontal = 0
+                if self.black_mode:
+                    w.styles.scrollbar_background = '#06080d'
+                    w.styles.scrollbar_color = '#06080d'
+                    w.styles.scrollbar_color_hover = '#06080d'
+                    w.styles.scrollbar_color_active = '#06080d'
+                    w.styles.scrollbar_corner_color = '#06080d'
+                else:
+                    w.styles.scrollbar_background = '#0b1020'
+                    w.styles.scrollbar_color = '#0b1020'
+                    w.styles.scrollbar_color_hover = '#0b1020'
+                    w.styles.scrollbar_color_active = '#0b1020'
+                    w.styles.scrollbar_corner_color = '#0b1020'
+
+    def action_toggle_scrollbars(self) -> None:
+        self.scrollbars_visible = not self.scrollbars_visible
+        self._apply_scrollbar_style()
+        self.refresh_stats()
+
     def action_toggle_black_mode(self) -> None:
         self.black_mode = not self.black_mode
         if self.black_mode:
@@ -323,14 +363,6 @@ class RigMonitor(App):
             for w in self.query('.panel'):
                 w.styles.background = '#06080d'
                 w.styles.border = ('heavy', '#181c24')
-            for w in self.query(VerticalScroll):
-                w.styles.scrollbar_size_vertical = 1
-                w.styles.scrollbar_size_horizontal = 1
-                w.styles.scrollbar_background = '#06080d'
-                w.styles.scrollbar_color = '#0a0d12'
-                w.styles.scrollbar_color_hover = '#11151c'
-                w.styles.scrollbar_color_active = '#1a1f28'
-                w.styles.scrollbar_corner_color = '#06080d'
         else:
             self.screen.styles.background = '#050816'
             for w in self.query('.metric'):
@@ -339,14 +371,7 @@ class RigMonitor(App):
             for w in self.query('.panel'):
                 w.styles.background = '#0b1020'
                 w.styles.border = ('heavy', '#475569')
-            for w in self.query(VerticalScroll):
-                w.styles.scrollbar_size_vertical = 1
-                w.styles.scrollbar_size_horizontal = 1
-                w.styles.scrollbar_background = '#0b1020'
-                w.styles.scrollbar_color = '#1d4ed8'
-                w.styles.scrollbar_color_hover = '#2563eb'
-                w.styles.scrollbar_color_active = '#3b82f6'
-                w.styles.scrollbar_corner_color = '#0b1020'
+        self._apply_scrollbar_style()
         self.refresh_stats()
 
     def get_gpu_rows(self) -> List[GpuRow]:
