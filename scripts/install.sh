@@ -18,9 +18,28 @@ if ! command -v python3 >/dev/null 2>&1; then
   exit 1
 fi
 
+ensure_apt_prereqs() {
+  if ! command -v apt-get >/dev/null 2>&1; then
+    return 0
+  fi
+
+  local need=0
+  command -v gcc >/dev/null 2>&1 || need=1
+  [ -f /usr/include/pci/pci.h ] || need=1
+  python3 -m pip --version >/dev/null 2>&1 || need=1
+  if [ "$need" -eq 0 ]; then
+    return 0
+  fi
+
+  echo "Installing rig-monitor/gputemps prerequisites via apt..."
+  sudo apt-get update
+  sudo apt-get install -y build-essential pciutils libpci-dev python3-pip
+}
+
+ensure_apt_prereqs
+
 if ! command -v gcc >/dev/null 2>&1; then
   echo "gcc is required for gputemps build"
-  echo "Install it first, e.g. sudo apt-get update && sudo apt-get install -y build-essential pciutils libpci-dev python3-pip"
   exit 1
 fi
 
