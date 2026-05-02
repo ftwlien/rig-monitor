@@ -380,6 +380,7 @@ class RigMonitor(App):
 
     def get_gpu_extra_temps(self) -> dict[int, dict]:
         candidates = [
+            os.path.expanduser('~/.gputemps-wrapper.sh'),
             '/usr/local/bin/gputemps',
             os.path.expanduser('~/gputemps'),
             os.path.expanduser('~/gddr6-core-junction-vram-temps/gputemps'),
@@ -700,8 +701,12 @@ class RigMonitor(App):
                     gpu_lines.append(f"[b cyan]GPU {g.index}[/b cyan] [bright_white]{truncate_middle(gpu_name, 22)}[/bright_white]")
                     gpu_lines.append(f"UTIL [{gpu_color}]{g.util:>3}%[/{gpu_color}] [{gpu_color}]{bar(g.util, 100, 20)}[/{gpu_color}]")
                     gpu_lines.append(f"VRAM [{mem_color}]{g.mem_util_pct:>3.0f}%[/{mem_color}] [{mem_color}]{bar(g.mem_util_pct, 100, 20)}[/{mem_color}]")
-                    gpu_lines.append(f"TEMP [yellow]{g.temp_c}°C[/yellow]  {extra_temp_text}" if extra_temp_text else f"TEMP [yellow]{g.temp_c}°C[/yellow]")
-                    gpu_lines.append(f"PWR  [magenta]{g.power_w:.0f}W[/magenta]  [green]{g.mem_used_gb:.1f}/{g.mem_total_gb:.1f}G[/green]")
+                    temp_line = f"TEMP [yellow]{g.temp_c}°C[/yellow]"
+                    if g.junction_c is not None:
+                        temp_line += f"  J [yellow]{g.junction_c}°C[/yellow]"
+                    if g.vram_c is not None:
+                        temp_line += f"  V [yellow]{g.vram_c}°C[/yellow]"
+                    gpu_lines.append(f"{temp_line}  [magenta]{g.power_w:.0f}W[/magenta]  [green]{g.mem_used_gb:.1f}/{g.mem_total_gb:.1f}G[/green]")
                 elif tiny or (wall_mode and self.force_compact_gpu):
                     tiny_temp = f"[yellow]{g.temp_c}°[/yellow]"
                     if g.junction_c is not None:
@@ -715,14 +720,21 @@ class RigMonitor(App):
                     gpu_lines.append(f"[b cyan]GPU {g.index}[/b cyan] [bright_white]{gpu_name}[/bright_white]")
                     gpu_lines.append(f"[{gpu_color}]{g.util:>3}%[/{gpu_color}] [{gpu_color}]{bar(g.util, 100, 12)}[/{gpu_color}] [{mem_color}]{g.mem_util_pct:>3.0f}% mem[/{mem_color}]")
                     compact_temp = f"[yellow]{g.temp_c}°C[/yellow]"
-                    if extra_temp_text:
-                        compact_temp += f" {extra_temp_text}"
+                    if g.junction_c is not None:
+                        compact_temp += f" J[yellow]{g.junction_c}°C[/yellow]"
+                    if g.vram_c is not None:
+                        compact_temp += f" V[yellow]{g.vram_c}°C[/yellow]"
                     gpu_lines.append(f"{compact_temp} [magenta]{g.power_w:.0f}W[/magenta] {temp_flag} [green]{g.mem_used_gb:.1f}/{g.mem_total_gb:.1f}G[/green]")
                 else:
                     gpu_lines.append(f"[b cyan]GPU {g.index}[/b cyan] [bright_white]{gpu_name}[/bright_white]")
                     gpu_lines.append(f"UTIL [{gpu_color}]{g.util:>3}%[/{gpu_color}] [{gpu_color}]{bar(g.util, 100, 24)}[/{gpu_color}]")
                     gpu_lines.append(f"VRAM [{mem_color}]{g.mem_util_pct:>3.0f}%[/{mem_color}] [{mem_color}]{bar(g.mem_util_pct, 100, 24)}[/{mem_color}]  [green]{g.mem_used_gb:.1f}/{g.mem_total_gb:.1f} GB[/green]")
-                    gpu_lines.append(f"TEMP [yellow]{g.temp_c}°C[/yellow]  {extra_temp_text}  [magenta]{g.power_w:.0f}W[/magenta]  {temp_flag}" if extra_temp_text else f"TEMP [yellow]{g.temp_c}°C[/yellow]  [magenta]{g.power_w:.0f}W[/magenta]  {temp_flag}")
+                    temp_line = f"TEMP [yellow]{g.temp_c}°C[/yellow]"
+                    if g.junction_c is not None:
+                        temp_line += f"  J [yellow]{g.junction_c}°C[/yellow]"
+                    if g.vram_c is not None:
+                        temp_line += f"  V [yellow]{g.vram_c}°C[/yellow]"
+                    gpu_lines.append(f"{temp_line}  [magenta]{g.power_w:.0f}W[/magenta]  {temp_flag}")
                 if not tiny:
                     gpu_lines.append("")
             if len(gpu_rows) > len(visible_gpu_rows):

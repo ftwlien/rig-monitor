@@ -51,6 +51,7 @@ That means tracking:
 - `gcc`
 - `git`
 - `sudo` access for installing `/usr/local/bin/gputemps`
+- `sudo` access for installing `/etc/sudoers.d/rig-monitor-gputemps`
 - system libraries needed by `gputemps` (typically satisfied by `pciutils` / `libpci-dev` and NVIDIA driver userspace libs)
 
 ## One-command install
@@ -67,6 +68,8 @@ What the installer now does:
 - clones/updates `gddr6-core-junction-vram-temps`
 - builds `gputemps`
 - installs `gputemps` to `/usr/local/bin/gputemps`
+- installs a sudoers rule so `rig-monitor` can run `gputemps` without prompting
+- creates a local wrapper used by `rig-monitor` for clean temp reads
 
 After install, you can run:
 
@@ -133,6 +136,7 @@ cd ~/rig-monitor && python3 app.py
 
 - GPU metrics require `pynvml` / NVIDIA management support.
 - Extra GPU temperature fields (`junction`, `vram`) come from `gputemps` when available.
+- In the GPU cards, junction (`J`) and VRAM (`V`) temps are shown beside the current core temp.
 - If NVML is unavailable, the dashboard will still run, but GPU sections will be limited.
 - Wall mode is designed for tiled / multi-panel monitoring setups where GPU visibility matters more than a noisy full process table.
 - If your shell cannot find `rig-monitor` after install, add `~/.local/bin` to your `PATH`.

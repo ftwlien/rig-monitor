@@ -58,10 +58,31 @@ else
   sudo install -m 0755 "$GPU_TEMP_REPO/gputemps" /usr/local/bin/gputemps
 fi
 
+RIG_USER="$(id -un)"
+SUDOERS_TMP="$(mktemp)"
+cat > "$SUDOERS_TMP" <<EOF
+${RIG_USER} ALL=(root) NOPASSWD: /usr/local/bin/gputemps
+EOF
+if [ -w /etc/sudoers.d ]; then
+  install -m 0440 "$SUDOERS_TMP" /etc/sudoers.d/rig-monitor-gputemps
+else
+  echo "Installing sudoers rule for gputemps with sudo..."
+  sudo install -m 0440 "$SUDOERS_TMP" /etc/sudoers.d/rig-monitor-gputemps
+fi
+rm -f "$SUDOERS_TMP"
+
+cat > "$REPO_DIR/.gputemps-wrapper.sh" <<'WRAP'
+#!/usr/bin/env bash
+set -euo pipefail
+exec sudo /usr/local/bin/gputemps "$@"
+WRAP
+chmod +x "$REPO_DIR/.gputemps-wrapper.sh"
+
 echo "Installed rig-monitor launcher to $LAUNCHER"
 echo "Installed gputemps to /usr/local/bin/gputemps"
+echo "Installed sudoers rule: /etc/sudoers.d/rig-monitor-gputemps"
 echo
-if /usr/local/bin/gputemps --json --once >/dev/null 2>&1; then
+if "$REPO_DIR/.gputemps-wrapper.sh" --json --once >/dev/null 2>&1; then
   echo "gputemps probe check: OK"
 else
   echo "gputemps probe check: installed, but runtime probe did not return cleanly right now"
