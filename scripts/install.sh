@@ -4,10 +4,23 @@ set -euo pipefail
 REPO_DIR="${HOME}/rig-monitor"
 BIN_DIR="${HOME}/.local/bin"
 LAUNCHER="${BIN_DIR}/rig-monitor"
+GPU_TEMP_REPO="${HOME}/gddr6-core-junction-vram-temps"
+GPU_TEMP_REPO_URL="https://github.com/ThomasBaruzier/gddr6-core-junction-vram-temps.git"
 
 if [ ! -d "$REPO_DIR" ]; then
   echo "Expected repo at $REPO_DIR"
   echo "Clone first with: git clone https://github.com/ftwlien/rig-monitor.git ~/rig-monitor"
+  exit 1
+fi
+
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "python3 is required"
+  exit 1
+fi
+
+if ! command -v gcc >/dev/null 2>&1; then
+  echo "gcc is required for gputemps build"
+  echo "Install it first, e.g. sudo apt-get update && sudo apt-get install -y build-essential pciutils libpci-dev python3-pip"
   exit 1
 fi
 
@@ -22,7 +35,38 @@ exec python3 app.py "$@"
 LAUNCH
 chmod +x "$LAUNCHER"
 
+if [ ! -d "$GPU_TEMP_REPO/.git" ]; then
+  git clone "$GPU_TEMP_REPO_URL" "$GPU_TEMP_REPO"
+else
+  git -C "$GPU_TEMP_REPO" pull --ff-only
+fi
+
+if [ ! -f "$GPU_TEMP_REPO/gputemps.c" ]; then
+  echo "gputemps source missing at $GPU_TEMP_REPO"
+  exit 1
+fi
+
+(
+  cd "$GPU_TEMP_REPO"
+  gcc -O2 -o gputemps gputemps.c -lnvidia-ml -lpci -ludev -ldl -lpthread -lm -lrt -lz
+)
+
+if [ -w /usr/local/bin ]; then
+  install -m 0755 "$GPU_TEMP_REPO/gputemps" /usr/local/bin/gputemps
+else
+  echo "Installing /usr/local/bin/gputemps with sudo..."
+  sudo install -m 0755 "$GPU_TEMP_REPO/gputemps" /usr/local/bin/gputemps
+fi
+
 echo "Installed rig-monitor launcher to $LAUNCHER"
+echo "Installed gputemps to /usr/local/bin/gputemps"
+echo
+if /usr/local/bin/gputemps --json --once >/dev/null 2>&1; then
+  echo "gputemps probe check: OK"
+else
+  echo "gputemps probe check: installed, but runtime probe did not return cleanly right now"
+fi
+
 echo
 if echo "$PATH" | tr ':' '\n' | grep -qx "$BIN_DIR"; then
   echo "You can now run: rig-monitor"

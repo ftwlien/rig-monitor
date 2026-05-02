@@ -34,6 +34,7 @@ That means tracking:
 
 - Textual-based terminal UI
 - Live GPU stats via NVML
+- GPU core / junction / VRAM temperature support via `gputemps`
 - CPU + per-core monitoring
 - RAM monitoring
 - Bandwidth monitoring
@@ -47,14 +48,25 @@ That means tracking:
 - Linux
 - Python 3
 - NVIDIA GPU drivers for GPU stats
+- `gcc`
+- `git`
+- `sudo` access for installing `/usr/local/bin/gputemps`
+- system libraries needed by `gputemps` (typically satisfied by `pciutils` / `libpci-dev` and NVIDIA driver userspace libs)
 
 ## One-command install
 
-Clone, install dependencies, and add a `rig-monitor` launcher:
+Clone, install dependencies, build/install `gputemps`, and add a `rig-monitor` launcher:
 
 ```bash
 git clone https://github.com/ftwlien/rig-monitor.git ~/rig-monitor && bash ~/rig-monitor/scripts/install.sh
 ```
+
+What the installer now does:
+- installs Python requirements for `rig-monitor`
+- installs the `rig-monitor` launcher
+- clones/updates `gddr6-core-junction-vram-temps`
+- builds `gputemps`
+- installs `gputemps` to `/usr/local/bin/gputemps`
 
 After install, you can run:
 
@@ -120,6 +132,7 @@ cd ~/rig-monitor && python3 app.py
 ## Notes
 
 - GPU metrics require `pynvml` / NVIDIA management support.
+- Extra GPU temperature fields (`junction`, `vram`) come from `gputemps` when available.
 - If NVML is unavailable, the dashboard will still run, but GPU sections will be limited.
 - Wall mode is designed for tiled / multi-panel monitoring setups where GPU visibility matters more than a noisy full process table.
 - If your shell cannot find `rig-monitor` after install, add `~/.local/bin` to your `PATH`.
