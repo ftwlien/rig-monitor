@@ -48,11 +48,10 @@ That means tracking:
 - Linux
 - Python 3
 - NVIDIA GPU drivers for GPU stats
-- `gcc`
 - `git`
 - `sudo` access for installing `/usr/local/bin/gputemps`
 - `sudo` access for installing `/etc/sudoers.d/rig-monitor-gputemps`
-- system libraries needed by `gputemps` (typically satisfied by `pciutils` / `libpci-dev` and NVIDIA driver userspace libs)
+- on apt-based rigs, the installer will attempt to install build/tooling deps automatically, including the package path needed for `nvml.h`
 
 ## One-command install
 
@@ -70,6 +69,7 @@ What the installer now does:
 - installs `gputemps` to `/usr/local/bin/gputemps`
 - installs a sudoers rule so `rig-monitor` can run `gputemps` without prompting
 - creates a local wrapper used by `rig-monitor` for clean temp reads
+- attempts to install the package path needed for `nvml.h` automatically on apt-based rigs
 
 After install, you can run:
 

@@ -31,12 +31,36 @@ ensure_apt_prereqs() {
     return 0
   fi
 
-  echo "Installing rig-monitor/gputemps prerequisites via apt..."
+  echo "Installing rig-monitor/gputemps base prerequisites via apt..."
   sudo apt-get update
   sudo apt-get install -y build-essential pciutils libpci-dev python3-pip
 }
 
+ensure_nvml_header() {
+  if [ -f /usr/include/nvml.h ] || [ -f /usr/local/cuda/include/nvml.h ]; then
+    return 0
+  fi
+
+  if ! command -v apt-get >/dev/null 2>&1; then
+    echo "Missing nvml.h and no apt-based installer available. Install NVIDIA headers/toolkit manually."
+    return 1
+  fi
+
+  echo "Installing package path for nvml.h via apt..."
+  sudo apt-get update
+  sudo apt-get install -y nvidia-cuda-toolkit || true
+
+  if [ -f /usr/include/nvml.h ] || [ -f /usr/local/cuda/include/nvml.h ]; then
+    return 0
+  fi
+
+  echo "nvml.h still missing after package install attempt."
+  echo "Install the NVIDIA development headers/toolkit manually on this rig, then rerun the installer."
+  return 1
+}
+
 ensure_apt_prereqs
+ensure_nvml_header
 
 if ! command -v gcc >/dev/null 2>&1; then
   echo "gcc is required for gputemps build"
@@ -67,7 +91,7 @@ fi
 
 (
   cd "$GPU_TEMP_REPO"
-  gcc -O2 -o gputemps gputemps.c -lnvidia-ml -lpci -ludev -ldl -lpthread -lm -lrt -lz
+  gcc -O2 -I/usr/include -I/usr/local/cuda/include -o gputemps gputemps.c -lnvidia-ml -lpci -ludev -ldl -lpthread -lm -lrt -lz
 )
 
 if [ -w /usr/local/bin ]; then
