@@ -143,6 +143,51 @@ cd ~/rig-monitor && python3 app.py
 - Wall mode is designed for tiled / multi-panel monitoring setups where GPU visibility matters more than a noisy full process table.
 - If your shell cannot find `rig-monitor` after install, add `~/.local/bin` to your `PATH`.
 
+## If `rig-monitor` doesn't run
+
+Try these in order:
+
+### 1. Update and rerun install
+
+```bash
+cd ~/rig-monitor && git pull && bash scripts/install.sh
+```
+
+### 2. Check the global launcher
+
+```bash
+which rig-monitor
+ls -l /usr/local/bin/rig-monitor
+```
+
+If the command still isn't found, try running it directly:
+
+```bash
+/usr/local/bin/rig-monitor
+```
+
+### 3. Check the temp wrapper
+
+```bash
+~/.gputemps-wrapper.sh --json --once
+```
+
+If that prints JSON, the temp helper path is working.
+
+### 4. If the repo already exists
+
+Don't clone again. Use:
+
+```bash
+cd ~/rig-monitor && git pull && bash scripts/install.sh
+```
+
+Instead of:
+
+```bash
+git clone https://github.com/ftwlien/rig-monitor.git ~/rig-monitor
+```
+
 ## Uninstall
 
 To remove rig-monitor, its launchers, the gputemps wrapper, the sudoers rule, and the cloned gputemps repo:
