@@ -80,13 +80,42 @@ cd ~/rig-monitor && python3 app.py
 
 ## Controls
 
-- `w` → toggle wall mode
-- `g` → toggle compact GPU mode
-- `c` → toggle shown CPU cores
-- `f` → toggle denser CPU-core display
+- `w` → toggle **wall mode** / **standard mode**
+  - wall mode hides the right-side top-process pane by default and prioritizes GPU + core visibility
+  - standard mode brings back the more traditional wider layout
+- `g` → toggle **compact GPU cards**
+  - useful if you want denser GPU rows
+- `c` → toggle **CPU core display density / shown cores mode**
+  - use this when you want fewer or more visible core rows depending on terminal size
+- `f` → toggle **dense CPU-core formatting**
+  - packs CPU core info tighter for high-core-count rigs
+- `b` → toggle **black mode**
+  - optional darker/stripped look
+  - default remains the classic boxed monitor chrome
+
+## Current layout behavior
+
+- The dashboard is built for GPU rig operators, not as a generic system monitor.
+- GPU visibility is the priority, especially in tiled/wall use.
+- The top row shows:
+  - CPU
+  - RAM
+  - BANDWIDTH
+  - DISK I/O
+- The lower area shows:
+  - GPU COMMAND CENTER
+  - CPU CORES
+  - optional TOP PROCESSES pane in standard mode
+- Scrolling is supported in:
+  - CPU CORES
+  - GPU COMMAND CENTER
+- In compact/tiny views, labels may shorten to preserve readability.
+- In standard/full-width views, the richer top-card layout is preserved.
+- The `w` toggle should only affect the lower layout focus, not randomly restyle the top row.
 
 ## Notes
 
 - GPU metrics require `pynvml` / NVIDIA management support.
 - If NVML is unavailable, the dashboard will still run, but GPU sections will be limited.
 - Wall mode is designed for tiled / multi-panel monitoring setups where GPU visibility matters more than a noisy full process table.
+- If your shell cannot find `rig-monitor` after install, add `~/.local/bin` to your `PATH`.
