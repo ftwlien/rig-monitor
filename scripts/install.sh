@@ -4,6 +4,7 @@ set -euo pipefail
 REPO_DIR="${HOME}/rig-monitor"
 BIN_DIR="${HOME}/.local/bin"
 LAUNCHER="${BIN_DIR}/rig-monitor"
+GLOBAL_LAUNCHER="/usr/local/bin/rig-monitor"
 GPU_TEMP_REPO="${HOME}/gddr6-core-junction-vram-temps"
 GPU_TEMP_REPO_URL="https://github.com/ThomasBaruzier/gddr6-core-junction-vram-temps.git"
 
@@ -78,6 +79,16 @@ exec python3 app.py "$@"
 LAUNCH
 chmod +x "$LAUNCHER"
 
+if [ "$(id -u)" -eq 0 ]; then
+  cat > "$GLOBAL_LAUNCHER" <<'LAUNCH'
+#!/usr/bin/env bash
+set -euo pipefail
+cd /root/rig-monitor
+exec python3 app.py "$@"
+LAUNCH
+  chmod +x "$GLOBAL_LAUNCHER"
+fi
+
 if [ ! -d "$GPU_TEMP_REPO/.git" ]; then
   git clone "$GPU_TEMP_REPO_URL" "$GPU_TEMP_REPO"
 else
@@ -122,6 +133,9 @@ WRAP
 chmod +x "${HOME}/.gputemps-wrapper.sh"
 
 echo "Installed rig-monitor launcher to $LAUNCHER"
+if [ "$(id -u)" -eq 0 ]; then
+  echo "Installed global rig-monitor launcher to $GLOBAL_LAUNCHER"
+fi
 echo "Installed gputemps to /usr/local/bin/gputemps"
 echo "Installed sudoers rule: /etc/sudoers.d/rig-monitor-gputemps"
 echo
@@ -132,11 +146,14 @@ else
 fi
 
 echo
-if echo "$PATH" | tr ':' '\n' | grep -qx "$BIN_DIR"; then
+if [ "$(id -u)" -eq 0 ]; then
+  echo "You can now run: rig-monitor"
+elif echo "$PATH" | tr ':' '\n' | grep -qx "$BIN_DIR"; then
   echo "You can now run: rig-monitor"
 else
   echo "$BIN_DIR is not on PATH yet."
   echo "Add this to your shell config:"
   echo 'export PATH="$HOME/.local/bin:$PATH"'
   echo "Then restart your shell or run: source ~/.bashrc"
+  echo "Or run it directly with: $LAUNCHER"
 fi
