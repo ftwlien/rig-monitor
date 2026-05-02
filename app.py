@@ -564,23 +564,6 @@ class RigMonitor(App):
             )
         else:
             self.cpu_box.value = (
-                f"[{cpu_color}]{cpu:.0f}%[/{cpu_color}] [{cpu_color}]{cpu_bar}[/{cpu_color}]\n"
-                f"[yellow]ld {load[0]:.1f}[/yellow]  {truncate_middle(cpu_title, 16)}{mode_tag}"
-            )
-            self.ram_box.value = (
-                f"[{ram_color}]{vm.percent:.0f}%[/{ram_color}] [{ram_color}]{ram_bar}[/{ram_color}]\n"
-                f"[green]{vm.used / 1024**3:.1f}/{vm.total / 1024**3:.1f}G[/green] free [cyan]{vm.available / 1024**3:.1f}G[/cyan]"
-            )
-            self.net_box.value = (
-                f"[bright_blue]↓ {format_rate(down_mb)}[/bright_blue]  [cyan]↑ {format_rate(up_mb)}[/cyan]\n"
-                f"[bright_blue]D {sparkline(list(self.net_down_hist), max_value=net_peak, width=8)}[/bright_blue]  [cyan]U {sparkline(list(self.net_up_hist), max_value=net_peak, width=8)}[/cyan]"
-            )
-            self.disk_box.value = (
-                f"[bright_blue]R {format_rate(read_mb)}[/bright_blue]  [cyan]W {format_rate(write_mb)}[/cyan]\n"
-                f"[bright_blue]R {sparkline(list(self.disk_read_hist), width=8)}[/bright_blue]  [cyan]W {sparkline(list(self.disk_write_hist), width=8)}[/cyan]"
-            )
-        else:
-            self.cpu_box.value = (
                 f"{cpu_title}{mode_tag}\n"
                 f"[{cpu_color}]{cpu:.0f}%[/{cpu_color}]  [{cpu_color}]{cpu_bar}[/{cpu_color}]\n"
                 f"[yellow]load {load[0]:.2f} {load[1]:.2f} {load[2]:.2f}[/yellow]\n"
