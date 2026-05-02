@@ -323,6 +323,9 @@ class RigMonitor(App):
             for w in self.query('.panel'):
                 w.styles.background = '#06080d'
                 w.styles.border = ('heavy', '#181c24')
+            for w in self.query(VerticalScroll):
+                w.styles.scrollbar_size_vertical = 0
+                w.styles.scrollbar_size_horizontal = 0
         else:
             self.screen.styles.background = '#050816'
             for w in self.query('.metric'):
@@ -331,6 +334,9 @@ class RigMonitor(App):
             for w in self.query('.panel'):
                 w.styles.background = '#0b1020'
                 w.styles.border = ('heavy', '#475569')
+            for w in self.query(VerticalScroll):
+                w.styles.scrollbar_size_vertical = 1
+                w.styles.scrollbar_size_horizontal = 1
         self.refresh_stats()
 
     def get_gpu_rows(self) -> List[GpuRow]:
