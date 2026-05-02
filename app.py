@@ -542,49 +542,22 @@ class RigMonitor(App):
                 f"[bright_blue]R {format_rate(read_mb)}[/bright_blue]\n"
                 f"[cyan]W {format_rate(write_mb)}[/cyan]"
             )
-        elif wall_mode or compact:
-            compact_cpu_label = cpu_short if wall_mode else truncate_middle(cpu_title, 16)
-            compact_bar_width = 12 if wall_mode else 10
-            compact_graph_width = 10 if wall_mode else 8
+        else:
             self.cpu_box.value = (
-                f"[{cpu_color}]{cpu:.0f}%[/{cpu_color}]  [{cpu_color}]{bar(cpu, 100, compact_bar_width)}[/{cpu_color}]\n"
-                f"[yellow]ld {load[0]:.1f}[/yellow]  {compact_cpu_label}{mode_tag}"
+                f"[{cpu_color}]{cpu:.0f}%[/{cpu_color}]  [{cpu_color}]{bar(cpu, 100, 12)}[/{cpu_color}]\n"
+                f"[yellow]ld {load[0]:.1f}[/yellow]  {cpu_short}{mode_tag}"
             )
             self.ram_box.value = (
-                f"[{ram_color}]{vm.percent:.0f}%[/{ram_color}]  [{ram_color}]{bar(vm.percent, 100, compact_bar_width)}[/{ram_color}]\n"
+                f"[{ram_color}]{vm.percent:.0f}%[/{ram_color}]  [{ram_color}]{bar(vm.percent, 100, 12)}[/{ram_color}]\n"
                 f"[green]{vm.used / 1024**3:.1f}/{vm.total / 1024**3:.1f}G[/green] free [cyan]{vm.available / 1024**3:.1f}G[/cyan]"
             )
             self.net_box.value = (
                 f"[bright_blue]↓ {format_rate(down_mb)}[/bright_blue]  [cyan]↑ {format_rate(up_mb)}[/cyan]\n"
-                f"[bright_blue]D {sparkline(list(self.net_down_hist), max_value=net_peak, width=compact_graph_width)}[/bright_blue]  [cyan]U {sparkline(list(self.net_up_hist), max_value=net_peak, width=compact_graph_width)}[/cyan]"
+                f"[bright_blue]D {sparkline(list(self.net_down_hist), max_value=net_peak, width=10)}[/bright_blue]  [cyan]U {sparkline(list(self.net_up_hist), max_value=net_peak, width=10)}[/cyan]"
             )
             self.disk_box.value = (
                 f"[bright_blue]R {format_rate(read_mb)}[/bright_blue]  [cyan]W {format_rate(write_mb)}[/cyan]\n"
-                f"[bright_blue]R {sparkline(list(self.disk_read_hist), width=compact_graph_width)}[/bright_blue]  [cyan]W {sparkline(list(self.disk_write_hist), width=compact_graph_width)}[/cyan]"
-            )
-        else:
-            self.cpu_box.value = (
-                f"{cpu_title}{mode_tag}\n"
-                f"[{cpu_color}]{cpu:.0f}%[/{cpu_color}]  [{cpu_color}]{cpu_bar}[/{cpu_color}]\n"
-                f"[yellow]load {load[0]:.2f} {load[1]:.2f} {load[2]:.2f}[/yellow]\n"
-                f"{heat_sparkline(list(self.cpu_hist), width=24)}"
-            )
-            self.ram_box.value = (
-                f"[green]{vm.used / 1024**3:.1f}[/green] / [cyan]{vm.total / 1024**3:.1f} GB[/cyan]\n"
-                f"[{ram_color}]{vm.percent:.0f}%[/{ram_color}]  [{ram_color}]{ram_bar}[/{ram_color}]\n"
-                f"avail [cyan]{vm.available / 1024**3:.1f} GB[/cyan]"
-            )
-            self.net_box.value = (
-                f"[bright_blue]↓ {format_rate(down_mb)}[/bright_blue]\n"
-                f"[cyan]↑ {format_rate(up_mb)}[/cyan]\n"
-                f"[bright_blue]{sparkline(list(self.net_down_hist), max_value=net_peak, width=24)}[/bright_blue]\n"
-                f"[cyan]{sparkline(list(self.net_up_hist), max_value=net_peak, width=24)}[/cyan]"
-            )
-            self.disk_box.value = (
-                f"[bright_blue]R {format_rate(read_mb)}[/bright_blue]\n"
-                f"[cyan]W {format_rate(write_mb)}[/cyan]\n"
-                f"[bright_blue]{sparkline(list(self.disk_read_hist), width=24)}[/bright_blue]\n"
-                f"[cyan]{sparkline(list(self.disk_write_hist), width=24)}[/cyan]"
+                f"[bright_blue]R {sparkline(list(self.disk_read_hist), width=10)}[/bright_blue]  [cyan]W {sparkline(list(self.disk_write_hist), width=10)}[/cyan]"
             )
 
         gpu_rows = self.get_gpu_rows()
