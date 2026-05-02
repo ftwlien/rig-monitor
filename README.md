@@ -143,3 +143,11 @@ cd ~/rig-monitor && python3 app.py
 - If NVML is unavailable, the dashboard will still run, but GPU sections will be limited.
 - Wall mode is designed for tiled / multi-panel monitoring setups where GPU visibility matters more than a noisy full process table.
 - If your shell cannot find `rig-monitor` after install, add `~/.local/bin` to your `PATH`.
+
+## Uninstall
+
+To remove rig-monitor, its launchers, the gputemps wrapper, the sudoers rule, and the cloned gputemps repo:
+
+```bash
+bash ~/rig-monitor/scripts/uninstall.sh
+```
