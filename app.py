@@ -543,22 +543,28 @@ class RigMonitor(App):
                 f"[cyan]W {format_rate(write_mb)}[/cyan]"
             )
         else:
-            full_cpu_label = truncate_middle(self.cpu_name, 34)
+            full_cpu_label = truncate_middle(self.cpu_name, 42)
             self.cpu_box.value = (
                 f"{full_cpu_label}\n"
+                f"[{cpu_color}]{cpu:.0f}%[/{cpu_color}]  [{cpu_color}]{bar(cpu, 100, 16)}[/{cpu_color}]\n"
                 f"[yellow]load {load[0]:.1f} {load[1]:.1f} {load[2]:.1f}[/yellow]"
             )
             self.ram_box.value = (
-                f"[{ram_color}]{vm.percent:.0f}%[/{ram_color}]  [{ram_color}]{bar(vm.percent, 100, 12)}[/{ram_color}]\n"
-                f"[green]{vm.used / 1024**3:.1f}/{vm.total / 1024**3:.1f}G[/green] free [cyan]{vm.available / 1024**3:.1f}G[/cyan]"
+                f"[green]{vm.used / 1024**3:.1f}[/green] / [cyan]{vm.total / 1024**3:.1f} GB[/cyan]\n"
+                f"[{ram_color}]{vm.percent:.0f}%[/{ram_color}]  [{ram_color}]{bar(vm.percent, 100, 16)}[/{ram_color}]\n"
+                f"avail [cyan]{vm.available / 1024**3:.1f} GB[/cyan]"
             )
             self.net_box.value = (
-                f"[bright_blue]↓ {format_rate(down_mb)}[/bright_blue]  [cyan]↑ {format_rate(up_mb)}[/cyan]\n"
-                f"[bright_blue]D {sparkline(list(self.net_down_hist), max_value=net_peak, width=10)}[/bright_blue]  [cyan]U {sparkline(list(self.net_up_hist), max_value=net_peak, width=10)}[/cyan]"
+                f"[bright_blue]↓ {format_rate(down_mb)}[/bright_blue]\n"
+                f"[cyan]↑ {format_rate(up_mb)}[/cyan]\n"
+                f"[bright_blue]{sparkline(list(self.net_down_hist), max_value=net_peak, width=24)}[/bright_blue]\n"
+                f"[cyan]{sparkline(list(self.net_up_hist), max_value=net_peak, width=24)}[/cyan]"
             )
             self.disk_box.value = (
-                f"[bright_blue]R {format_rate(read_mb)}[/bright_blue]  [cyan]W {format_rate(write_mb)}[/cyan]\n"
-                f"[bright_blue]R {sparkline(list(self.disk_read_hist), width=10)}[/bright_blue]  [cyan]W {sparkline(list(self.disk_write_hist), width=10)}[/cyan]"
+                f"[bright_blue]R {format_rate(read_mb)}[/bright_blue]\n"
+                f"[cyan]W {format_rate(write_mb)}[/cyan]\n"
+                f"[bright_blue]{sparkline(list(self.disk_read_hist), width=24)}[/bright_blue]\n"
+                f"[cyan]{sparkline(list(self.disk_write_hist), width=24)}[/cyan]"
             )
 
         gpu_rows = self.get_gpu_rows()
