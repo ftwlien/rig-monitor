@@ -143,6 +143,12 @@ cd ~/rig-monitor && python3 app.py
 - Wall mode is designed for tiled / multi-panel monitoring setups where GPU visibility matters more than a noisy full process table.
 - If your shell cannot find `rig-monitor` after install, add `~/.local/bin` to your `PATH`.
 
+Use:
+
+```bash
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc && source ~/.bashrc
+```
+
 ## If `rig-monitor` doesn't run
 
 Try these in order:
