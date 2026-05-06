@@ -57,6 +57,15 @@ def truncate_middle(text: str, max_len: int) -> str:
     return f"{text[:left]}...{text[-right:]}"
 
 
+def strip_rich_markup(text: str) -> str:
+    return re.sub(r"\[[^\]]+\]", "", text)
+
+
+def pad_rich_right(text: str, width: int) -> str:
+    visible_len = len(strip_rich_markup(text))
+    return text + (" " * max(0, width - visible_len))
+
+
 def format_rate(mbps: float) -> str:
     if mbps >= 1024:
         return f"{mbps / 1024:.2f} GB/s"
@@ -153,6 +162,27 @@ def color_for_load(load_value: float, cpu_count: int) -> str:
     pct = (load_value / cpu_count) * 100.0
     return color_for_pct(pct)
 
+
+
+
+def get_gpu_average_fan_pct(handle) -> int | None:
+    speeds = []
+    try:
+        fan_count = int(pynvml.nvmlDeviceGetNumFans(handle))
+    except Exception:
+        fan_count = 0
+    if fan_count > 0 and hasattr(pynvml, "nvmlDeviceGetFanSpeed_v2"):
+        for fan_idx in range(fan_count):
+            try:
+                speeds.append(int(pynvml.nvmlDeviceGetFanSpeed_v2(handle, fan_idx)))
+            except Exception:
+                continue
+    if speeds:
+        return int(round(sum(speeds) / len(speeds)))
+    try:
+        return int(pynvml.nvmlDeviceGetFanSpeed(handle))
+    except Exception:
+        return None
 
 def heat_sparkline(values: List[float], width: int | None = None) -> str:
     if not values:
@@ -502,6 +532,20 @@ class RigMonitor(App):
         self.last_fan_refresh = now
         return control, target
 
+
+    def format_wall_fan_value(self, g: GpuRow) -> str:
+        if g.fan_pct is None:
+            return "[white]--%[/white]"
+        fan_color = color_for_fan(g.fan_pct)
+        value = f"[{fan_color}]{g.fan_pct}%[/{fan_color}]"
+        if g.fan_pct == 0 and g.temp_c < 50:
+            value += " [green]A[/green]"
+        elif g.fan_control == 1 and g.fan_target_pct is not None:
+            value += f"→[{fan_color}]{g.fan_target_pct}%[/{fan_color}]"
+        elif g.fan_control == 0:
+            value += " [green]A[/green]"
+        return value
+
     def format_fan_label(self, g: GpuRow, compact: bool = False) -> str:
         if g.fan_pct is None:
             return "FAN [white]--[/white]"
@@ -535,10 +579,7 @@ class RigMonitor(App):
                     power = pynvml.nvmlDeviceGetPowerUsage(h) / 1000.0
                 except Exception:
                     power = 0.0
-                try:
-                    fan_pct = int(pynvml.nvmlDeviceGetFanSpeed(h))
-                except Exception:
-                    fan_pct = None
+                fan_pct = get_gpu_average_fan_pct(h)
                 mem_util_pct = (mem.used / mem.total * 100.0) if mem.total else 0.0
                 extra = extra_temps.get(i, {})
                 rows.append(GpuRow(
@@ -823,14 +864,17 @@ class RigMonitor(App):
                 gpu_name = g.name if compact else truncate_middle(g.name, 40)
                 if wall_mode and not self.force_compact_gpu:
                     gpu_lines.append(f"[b cyan]GPU {g.index}[/b cyan] [bright_white]{truncate_middle(gpu_name, 32)}[/bright_white]")
-                    gpu_lines.append(f"UTIL [{gpu_color}]{g.util:>3}%[/{gpu_color}] [{gpu_color}]{bar(g.util, 100, 43)}[/{gpu_color}]")
-                    gpu_lines.append(f"VRAM [{mem_color}]{g.mem_util_pct:>3.0f}%[/{mem_color}] [{mem_color}]{bar(g.mem_util_pct, 100, 43)}[/{mem_color}]")
-                    temp_line = f"TEMP [{core_temp_color}]{g.temp_c}°C[/{core_temp_color}]"
-                    if g.junction_c is not None:
-                        temp_line += f"  J [{junction_temp_color}]{g.junction_c}°C[/{junction_temp_color}]"
-                    if g.vram_c is not None:
-                        temp_line += f"  V [{vram_temp_color}]{g.vram_c}°C[/{vram_temp_color}]"
-                    gpu_lines.append(f"{temp_line}  {self.format_fan_label(g, compact=True)}  [magenta]{g.power_w:.0f}W[/magenta]  [green]{g.mem_used_gb:.1f}/{g.mem_total_gb:.1f}G[/green]")
+                    gpu_lines.append(f"UTIL [{gpu_color}]{g.util}%[/{gpu_color}] [{gpu_color}]{bar(g.util, 100, 43)}[/{gpu_color}]")
+                    gpu_lines.append(f"VRAM [{mem_color}]{g.mem_util_pct:.0f}%[/{mem_color}] [{mem_color}]{bar(g.mem_util_pct, 100, 43)}[/{mem_color}]")
+                    fan_text = self.format_wall_fan_value(g)
+                    temp_field = pad_rich_right(f"TEMP [{core_temp_color}]{g.temp_c}°C[/{core_temp_color}]", 24)
+                    j_field = pad_rich_right(f"J [{junction_temp_color}]{g.junction_c}°C[/{junction_temp_color}]" if g.junction_c is not None else "", 16)
+                    v_field = f"V [{vram_temp_color}]{g.vram_c}°C[/{vram_temp_color}]" if g.vram_c is not None else ""
+                    gpu_lines.append(f"{temp_field}{j_field}{v_field}")
+                    fan_field = pad_rich_right(f"FAN {fan_text}", 24)
+                    pwr_field = pad_rich_right(f"PWR [magenta]{g.power_w:.0f}W[/magenta]", 16)
+                    mem_field = f"MEM [green]{g.mem_used_gb:.1f}/{g.mem_total_gb:.1f}G[/green]"
+                    gpu_lines.append(f"{fan_field}{pwr_field}{mem_field}")
                 elif tiny or (wall_mode and self.force_compact_gpu):
                     tiny_temp = f"[{core_temp_color}]{g.temp_c}°[/{core_temp_color}]"
                     if g.junction_c is not None:
