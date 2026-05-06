@@ -862,7 +862,7 @@ class RigMonitor(App):
                     gpu_lines.append(f"{util_label}[{gpu_color}]{bar(g.util, 100, 43)}[/{gpu_color}]")
                     gpu_lines.append(f"{mem_label}[{mem_color}]{bar(g.mem_util_pct, 100, 43)}[/{mem_color}]")
                     temp_field = pad_rich_right(f"TEMP [{core_temp_color}]{g.temp_c}°C[/{core_temp_color}]", 21)
-                    junc_field = pad_rich_right(f"Junc [{junction_temp_color}]{g.junction_c}°C[/{junction_temp_color}]" if g.junction_c is not None else "", 20)
+                    junc_field = pad_rich_right(f"Junc [{junction_temp_color}]{g.junction_c}°C[/{junction_temp_color}]" if g.junction_c is not None else "", 21)
                     vram_field = f"Vram [{vram_temp_color}]{g.vram_c}°C[/{vram_temp_color}]" if g.vram_c is not None else ""
                     gpu_lines.append(f"{temp_field}{junc_field}{vram_field}")
                     pwr_color = color_for_power_watts(g.power_w)
