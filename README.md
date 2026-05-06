@@ -35,6 +35,7 @@ That means tracking:
 - Textual-based terminal UI
 - Live GPU stats via NVML
 - GPU core / junction / VRAM temperature support via `gputemps`
+- GPU fan speed / target display when NVIDIA fan control is active
 - CPU + per-core monitoring
 - RAM monitoring
 - Bandwidth monitoring
@@ -138,6 +139,7 @@ cd ~/rig-monitor && python3 app.py
 
 - GPU metrics require `pynvml` / NVIDIA management support.
 - Extra GPU temperature fields (`junction`, `vram`) come from `gputemps` when available.
+- Fan display uses NVML for live speed and `nvidia-settings` for auto/manual target state when available.
 - In the GPU cards, junction (`J`) and VRAM (`V`) temps are shown beside the current core temp.
 - If NVML is unavailable, the dashboard will still run, but GPU sections will be limited.
 - Wall mode is designed for tiled / multi-panel monitoring setups where GPU visibility matters more than a noisy full process table.

@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import subprocess
 import time
 from collections import deque
@@ -114,6 +115,18 @@ def color_for_temp(value: int | float | None, warm: int = 65, hot: int = 80) -> 
     return "green"
 
 
+def color_for_fan(value: int | float | None) -> str:
+    if value is None:
+        return "white"
+    if value >= 90:
+        return "red"
+    if value >= 70:
+        return "yellow"
+    if value >= 40:
+        return "cyan"
+    return "green"
+
+
 def heat_sparkline(values: List[float], width: int | None = None) -> str:
     if not values:
         return ""
@@ -150,6 +163,9 @@ class GpuRow:
     vram_c: int | None
     power_w: float
     mem_util_pct: float
+    fan_pct: int | None
+    fan_control: int | None
+    fan_target_pct: int | None
 
 
 class MetricBox(Static):
@@ -294,6 +310,9 @@ class RigMonitor(App):
         self.cached_gpu_proc_rows: List[GpuProcRow] = []
         self.cached_top_procs: List[tuple] = []
         self.last_proc_refresh = 0.0
+        self.cached_gpu_fan_control: dict[int, int | None] = {}
+        self.cached_fan_target_pct: int | None = None
+        self.last_fan_refresh = 0.0
         self._apply_scrollbar_style()
         psutil.cpu_percent(interval=None, percpu=True)
         self.set_interval(1.0, self.refresh_stats)
@@ -414,11 +433,65 @@ class RigMonitor(App):
                 continue
         return {}
 
+    def get_gpu_fan_settings(self) -> tuple[dict[int, int | None], int | None]:
+        """Return nvidia-settings fan mode per GPU and the current configured target.
+
+        NVIDIA exposes current fan speed cleanly through NVML per GPU. The manual/auto
+        control state is GPU-scoped, while target fan speed is fan-scoped; on multi-fan
+        cards there is no simple portable fan→GPU map here. Since this monitor's fan
+        controller intentionally applies one fleet-safe target to every fan, showing the
+        highest configured target is both accurate and tidy.
+        """
+        now = time.time()
+        if (now - self.last_fan_refresh) < 2.0:
+            return self.cached_gpu_fan_control, self.cached_fan_target_pct
+
+        control: dict[int, int | None] = {}
+        target: int | None = None
+        try:
+            out = subprocess.check_output(
+                ["nvidia-settings", "--ctrl-display=:0", "-q", "GPUFanControlState", "-q", "GPUTargetFanSpeed"],
+                text=True,
+                stderr=subprocess.DEVNULL,
+                timeout=1.5,
+                env={**os.environ, "DISPLAY": ":0", "XAUTHORITY": "/root/.Xauthority"},
+            )
+            for line in out.splitlines():
+                m = re.search(r"\[gpu:(\d+)\].*?:\s*(\d+)\.", line)
+                if m and "GPUFanControlState" in line:
+                    control[int(m.group(1))] = int(m.group(2))
+                    continue
+                m = re.search(r"GPUTargetFanSpeed.*?:\s*(\d+)\.", line)
+                if m:
+                    val = int(m.group(1))
+                    target = val if target is None else max(target, val)
+        except Exception:
+            pass
+
+        self.cached_gpu_fan_control = control
+        self.cached_fan_target_pct = target
+        self.last_fan_refresh = now
+        return control, target
+
+    def format_fan_label(self, g: GpuRow, compact: bool = False) -> str:
+        if g.fan_pct is None:
+            return "FAN [white]--[/white]"
+        fan_color = color_for_fan(g.fan_pct)
+        label = f"FAN [{fan_color}]{g.fan_pct:>3}%[/{fan_color}]"
+        if g.fan_control == 1 and g.fan_target_pct is not None:
+            label += f"→[{fan_color}]{g.fan_target_pct}%[/{fan_color}]"
+        elif g.fan_control == 0:
+            label += " [green]A[/green]"
+        elif not compact and g.fan_target_pct is not None:
+            label += f" T{g.fan_target_pct}%"
+        return label
+
     def get_gpu_rows(self) -> List[GpuRow]:
         rows: List[GpuRow] = []
         if not NVML_OK:
             return rows
         extra_temps = self.get_gpu_extra_temps()
+        fan_control, fan_target = self.get_gpu_fan_settings()
         try:
             count = pynvml.nvmlDeviceGetCount()
             for i in range(count):
@@ -433,6 +506,10 @@ class RigMonitor(App):
                     power = pynvml.nvmlDeviceGetPowerUsage(h) / 1000.0
                 except Exception:
                     power = 0.0
+                try:
+                    fan_pct = int(pynvml.nvmlDeviceGetFanSpeed(h))
+                except Exception:
+                    fan_pct = None
                 mem_util_pct = (mem.used / mem.total * 100.0) if mem.total else 0.0
                 extra = extra_temps.get(i, {})
                 rows.append(GpuRow(
@@ -446,6 +523,9 @@ class RigMonitor(App):
                     vram_c=int(extra['vram']) if extra.get('vram') is not None else None,
                     power_w=float(power),
                     mem_util_pct=float(mem_util_pct),
+                    fan_pct=fan_pct,
+                    fan_control=fan_control.get(i),
+                    fan_target_pct=fan_target,
                 ))
         except Exception:
             return []
@@ -557,7 +637,7 @@ class RigMonitor(App):
         for g in visible_gpu_rows:
             gpu_color = color_for_pct(g.util)
             mem_color = color_for_pct(g.mem_util_pct)
-            lines.append(f"G{g.index} [{gpu_color}]{g.util:>3}%[/{gpu_color}] [{mem_color}]{g.mem_util_pct:>3.0f}% mem[/{mem_color}] [yellow]{g.temp_c}°[/yellow] [magenta]{g.power_w:.0f}W[/magenta]")
+            lines.append(f"G{g.index} [{gpu_color}]{g.util:>3}%[/{gpu_color}] [{mem_color}]{g.mem_util_pct:>3.0f}% mem[/{mem_color}] [yellow]{g.temp_c}°[/yellow] {self.format_fan_label(g, compact=True)} [magenta]{g.power_w:.0f}W[/magenta]")
             lines.append(f"   {truncate_middle(g.name, 28)}")
         if len(gpu_rows) > len(visible_gpu_rows):
             lines.append(f"... showing {len(visible_gpu_rows)}/{len(gpu_rows)} gpus")
@@ -713,7 +793,7 @@ class RigMonitor(App):
                         temp_line += f"  J [{junction_temp_color}]{g.junction_c}°C[/{junction_temp_color}]"
                     if g.vram_c is not None:
                         temp_line += f"  V [{vram_temp_color}]{g.vram_c}°C[/{vram_temp_color}]"
-                    gpu_lines.append(f"{temp_line}  [magenta]{g.power_w:.0f}W[/magenta]  [green]{g.mem_used_gb:.1f}/{g.mem_total_gb:.1f}G[/green]")
+                    gpu_lines.append(f"{temp_line}  {self.format_fan_label(g, compact=True)}  [magenta]{g.power_w:.0f}W[/magenta]  [green]{g.mem_used_gb:.1f}/{g.mem_total_gb:.1f}G[/green]")
                 elif tiny or (wall_mode and self.force_compact_gpu):
                     tiny_temp = f"[{core_temp_color}]{g.temp_c}°[/{core_temp_color}]"
                     if g.junction_c is not None:
@@ -721,7 +801,7 @@ class RigMonitor(App):
                     if g.vram_c is not None:
                         tiny_temp += f" [{vram_temp_color}]V{g.vram_c}°[/{vram_temp_color}]"
                     gpu_lines.append(
-                        f"[b cyan]G{g.index}[/b cyan] {truncate_middle(gpu_name, 20)}  [{gpu_color}]{g.util:>3}%[/{gpu_color}]  [{mem_color}]{g.mem_util_pct:>3.0f}% mem[/{mem_color}]  {tiny_temp}  [magenta]{g.power_w:.0f}W[/magenta]"
+                        f"[b cyan]G{g.index}[/b cyan] {truncate_middle(gpu_name, 20)}  [{gpu_color}]{g.util:>3}%[/{gpu_color}]  [{mem_color}]{g.mem_util_pct:>3.0f}% mem[/{mem_color}]  {tiny_temp}  {self.format_fan_label(g, compact=True)}  [magenta]{g.power_w:.0f}W[/magenta]"
                     )
                 elif compact:
                     gpu_lines.append(f"[b cyan]GPU {g.index}[/b cyan] [bright_white]{gpu_name}[/bright_white]")
@@ -731,7 +811,7 @@ class RigMonitor(App):
                         compact_temp += f" J[{junction_temp_color}]{g.junction_c}°C[/{junction_temp_color}]"
                     if g.vram_c is not None:
                         compact_temp += f" V[{vram_temp_color}]{g.vram_c}°C[/{vram_temp_color}]"
-                    gpu_lines.append(f"{compact_temp} [magenta]{g.power_w:.0f}W[/magenta] {temp_flag} [green]{g.mem_used_gb:.1f}/{g.mem_total_gb:.1f}G[/green]")
+                    gpu_lines.append(f"{compact_temp} {self.format_fan_label(g, compact=True)} [magenta]{g.power_w:.0f}W[/magenta] {temp_flag} [green]{g.mem_used_gb:.1f}/{g.mem_total_gb:.1f}G[/green]")
                 else:
                     gpu_lines.append(f"[b cyan]GPU {g.index}[/b cyan] [bright_white]{gpu_name}[/bright_white]")
                     gpu_lines.append(f"UTIL [{gpu_color}]{g.util:>3}%[/{gpu_color}] [{gpu_color}]{bar(g.util, 100, 24)}[/{gpu_color}]")
@@ -741,7 +821,7 @@ class RigMonitor(App):
                         temp_line += f"  J [{junction_temp_color}]{g.junction_c}°C[/{junction_temp_color}]"
                     if g.vram_c is not None:
                         temp_line += f"  V [{vram_temp_color}]{g.vram_c}°C[/{vram_temp_color}]"
-                    gpu_lines.append(f"{temp_line}  [magenta]{g.power_w:.0f}W[/magenta]  {temp_flag}")
+                    gpu_lines.append(f"{temp_line}  {self.format_fan_label(g)}  [magenta]{g.power_w:.0f}W[/magenta]  {temp_flag}")
                 if not tiny:
                     gpu_lines.append("")
             if len(gpu_rows) > len(visible_gpu_rows):
