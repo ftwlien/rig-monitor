@@ -1,94 +1,122 @@
 # Rig Monitor
 
-A clean terminal dashboard for GPU rigs with live GPU, CPU, RAM, bandwidth, disk I/O, and process monitoring.
+A clean terminal dashboard for NVIDIA GPU rigs.
+
+Built for people running mining, Vast.ai, AI, render, or other GPU-heavy hosts where you need to know what the machine is doing **at a glance**.
+
+`rig-monitor` shows GPU load, VRAM, temperatures, fan speed, power draw, CPU, RAM, bandwidth, disk I/O, and GPU-bound processes in one terminal UI.
+
+---
 
 ## Why this exists
 
-Most rig monitoring tools only show part of the picture.
+Most monitoring tools split the useful info across multiple commands:
 
-Some are good at CPU and system load.
-Some are good at GPU stats.
-But when you're actually operating GPU rigs, that split gets annoying fast — you end up jumping between multiple tools just to understand what one machine is doing.
+- `nvidia-smi` for GPU stats
+- `htop` for CPU/processes
+- `iftop`/`nload` for bandwidth
+- `iotop`/`dstat` for disk
+- custom scripts for junction/VRAM temps
 
-`rig-monitor` exists to fix that.
+That gets annoying fast when you operate multiple GPU rigs.
 
-The goal is simple:
-- one terminal dashboard
-- one glanceable view
-- the important rig signals in one place
+`rig-monitor` is meant to be the one clean screen you can SSH into and leave open.
 
-That means tracking:
+---
+
+## What it shows
+
+### GPU Command Center
+
 - GPU utilization
 - VRAM usage
-- temperatures
-- power draw
-- CPU load
+- core temperature
+- junction temperature
+- VRAM temperature
+- live fan speed
+- power draw with load coloring
+- used/total GPU memory
+- active GPU processes
+
+The wall-mode GPU card is tuned for readability:
+
+```text
+UTIL 100% ███████████████████████████████████████████
+VRAM  61% ████████████████████████░░░░░░░░░░░░░░░░░░░
+TEMP 74°C            Junc 101°C      Vram 62°C
+FAN 100%             PWR 450W        MEM 14.7/24.0G
+```
+
+### System overview
+
+- CPU usage and load average
+- RAM usage with pressure coloring
+- bandwidth up/down with load coloring
+- disk read/write with separate disk-oriented thresholds
 - per-core CPU activity
-- RAM usage
-- bandwidth up/down
-- disk I/O
-- active processes
-- GPU-bound process activity
+- top processes
+
+---
 
 ## Features
 
 - Textual-based terminal UI
-- Live GPU stats via NVML
-- GPU core / junction / VRAM temperature support via `gputemps`
-- GPU fan speed / target display when NVIDIA fan control is active
-- CPU + per-core monitoring
-- RAM monitoring
-- Bandwidth monitoring
-- Disk read/write monitoring
-- Top process view
-- GPU process view
-- Wall-mode friendly layout for tiled terminal setups
+- NVIDIA GPU stats via NVML
+- optional core/junction/VRAM temperatures via `gputemps`
+- clean fan display: `FAN 0% A` for auto idle, `FAN 100%` under load
+- colored power draw: low/medium/high load is easy to spot
+- separate network and disk color thresholds
+- wall-mode layout for tiled SSH terminals
+- compact GPU mode
+- dense CPU-core mode
+- hidden scrollbars by default for a cleaner look
+- quit with `Ctrl+C` or `Ctrl+Q`
+
+---
 
 ## Requirements
 
 - Linux
 - Python 3
-- NVIDIA GPU drivers for GPU stats
+- NVIDIA GPU drivers
 - `git`
-- `sudo` access for installing `/usr/local/bin/gputemps`
-- `sudo` access for installing `/etc/sudoers.d/rig-monitor-gputemps`
-- on apt-based rigs, the installer will attempt to install build/tooling deps automatically, including the package path needed for `nvml.h`
+- `sudo` access for installing helper binaries/rules
 
-## One-command install
+On apt-based systems, the installer attempts to install the build/tooling dependencies needed for `gputemps`, including the package path for `nvml.h`.
 
-Clone, install dependencies, build/install `gputemps`, and add a `rig-monitor` launcher:
+---
+
+## Install
 
 ```bash
 git clone https://github.com/ftwlien/rig-monitor.git ~/rig-monitor && bash ~/rig-monitor/scripts/install.sh
 ```
 
-What the installer now does:
-- installs Python requirements for `rig-monitor`
-- installs the `rig-monitor` launcher
-- clones/updates `gddr6-core-junction-vram-temps`
-- builds `gputemps`
-- installs `gputemps` to `/usr/local/bin/gputemps`
-- installs a sudoers rule so `rig-monitor` can run `gputemps` without prompting
-- creates a local wrapper used by `rig-monitor` for clean temp reads
-- attempts to install the package path needed for `nvml.h` automatically on apt-based rigs
-
-After install, you can run:
+Then run:
 
 ```bash
 rig-monitor
 ```
 
-The installer places a user-local launcher in `~/.local/bin` and also attempts to install a global launcher at `/usr/local/bin/rig-monitor` so the command works immediately after install.
+The installer:
 
-If `~/.local/bin` is not already on your `PATH`, the installer will tell you what to add.
+- installs Python requirements
+- installs a user launcher in `~/.local/bin`
+- installs a global launcher at `/usr/local/bin/rig-monitor` when possible
+- clones/updates `gddr6-core-junction-vram-temps`
+- builds and installs `/usr/local/bin/gputemps`
+- creates `~/.gputemps-wrapper.sh`
+- installs a sudoers rule for clean temp reads
+
+---
 
 ## Update
-
-If `rig-monitor` is already installed:
 
 ```bash
 cd ~/rig-monitor && git pull && bash scripts/install.sh
 ```
+
+---
 
 ## Manual run
 
@@ -96,110 +124,101 @@ cd ~/rig-monitor && git pull && bash scripts/install.sh
 cd ~/rig-monitor && python3 app.py
 ```
 
+---
+
 ## Controls
 
-- `w` → toggle **wall mode** / **standard mode**
-  - wall mode hides the right-side top-process pane by default and prioritizes GPU + core visibility
-  - standard mode brings back the more traditional wider layout
-- `g` → toggle **compact GPU cards**
-  - useful if you want denser GPU rows
-- `c` → toggle **CPU core display density / shown cores mode**
-  - use this when you want fewer or more visible core rows depending on terminal size
-- `f` → toggle **dense CPU-core formatting**
-  - packs CPU core info tighter for high-core-count rigs
-- `b` → toggle **black mode**
-  - optional darker/stripped look
-  - default remains the classic boxed monitor chrome
-- `p` → toggle **scrollbars**
-  - scrollbars are hidden by default
-  - press `p` when you want them visible
-  - works independently of black mode
+- `w` — toggle wall mode / standard mode
+- `g` — toggle compact GPU cards
+- `c` — toggle shown CPU cores
+- `f` — toggle dense CPU-core formatting
+- `b` — toggle black mode
+- `p` — toggle scrollbars
+- `Ctrl+C` — quit
+- `Ctrl+Q` — quit
 
-## Current layout behavior
+---
 
-- The dashboard is built for GPU rig operators, not as a generic system monitor.
-- GPU visibility is the priority, especially in tiled/wall use.
-- The top row shows:
-  - CPU
-  - RAM
-  - BANDWIDTH
-  - DISK I/O
-- The lower area shows:
-  - GPU COMMAND CENTER
-  - CPU CORES
-  - optional TOP PROCESSES pane in standard mode
-- Scrolling is supported in:
-  - CPU CORES
-  - GPU COMMAND CENTER
-- In compact/tiny views, labels may shorten to preserve readability.
-- In standard/full-width views, the richer top-card layout is preserved.
-- The `w` toggle should only affect the lower layout focus, not randomly restyle the top row.
+## Layout behavior
+
+`rig-monitor` is optimized for GPU rig operators, not as a generic system monitor.
+
+The top row shows:
+
+- CPU
+- RAM
+- bandwidth
+- disk I/O
+
+The main area shows:
+
+- GPU Command Center
+- CPU cores
+- GPU workload/process table
+- optional top-process pane in standard mode
+
+Wall mode prioritizes GPU visibility and high-core-count CPU readability. Standard mode keeps a more traditional broader layout.
+
+---
 
 ## Notes
 
-- GPU metrics require `pynvml` / NVIDIA management support.
-- Extra GPU temperature fields (`junction`, `vram`) come from `gputemps` when available.
-- Fan display uses NVML for live speed and `nvidia-settings` for auto/manual target state when available.
-- In the GPU cards, junction (`J`) and VRAM (`V`) temps are shown beside the current core temp.
-- If NVML is unavailable, the dashboard will still run, but GPU sections will be limited.
-- Wall mode is designed for tiled / multi-panel monitoring setups where GPU visibility matters more than a noisy full process table.
-- If your shell cannot find `rig-monitor` after install, add `~/.local/bin` to your `PATH`.
+- GPU metrics require NVML / NVIDIA management support.
+- Junction and VRAM temperatures come from `gputemps` when available.
+- If extra temperature probing is unavailable, the dashboard still runs with core GPU temperature.
+- Fan speed uses NVML live fan speed.
+- Idle auto fan mode is displayed as `FAN 0% A`.
+- Power draw colors are tuned for large NVIDIA GPUs:
+  - low = green
+  - medium = cyan/yellow
+  - high = red
+- Network and disk colors use different thresholds because disk I/O normally scales much higher than bandwidth.
 
-Use:
+---
 
-```bash
-echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc && source ~/.bashrc
-```
+## Troubleshooting
 
-## If `rig-monitor` doesn't run
-
-Try these in order:
-
-### 1. Update and rerun install
-
-```bash
-cd ~/rig-monitor && git pull && bash scripts/install.sh
-```
-
-### 2. Check the global launcher
+### Command not found
 
 ```bash
 which rig-monitor
 ls -l /usr/local/bin/rig-monitor
 ```
 
-If the command still isn't found, try running it directly:
+If needed, run directly:
 
 ```bash
 /usr/local/bin/rig-monitor
 ```
 
-### 3. Check the temp wrapper
+Or add user-local bin to PATH:
+
+```bash
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc && source ~/.bashrc
+```
+
+### Temp helper check
 
 ```bash
 ~/.gputemps-wrapper.sh --json --once
 ```
 
-If that prints JSON, the temp helper path is working.
+If that prints JSON, the extra temperature helper is working.
 
-### 4. If the repo already exists
-
-Don't clone again. Use:
+### Update an existing install
 
 ```bash
 cd ~/rig-monitor && git pull && bash scripts/install.sh
 ```
 
-Instead of:
+Do not clone again if `~/rig-monitor` already exists.
 
-```bash
-git clone https://github.com/ftwlien/rig-monitor.git ~/rig-monitor
-```
+---
 
 ## Uninstall
-
-To remove rig-monitor, its launchers, the gputemps wrapper, the sudoers rule, and the cloned gputemps repo:
 
 ```bash
 bash ~/rig-monitor/scripts/uninstall.sh
 ```
+
+This removes the launchers, temp wrapper, sudoers rule, and cloned gputemps repo.
