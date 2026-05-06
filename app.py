@@ -156,6 +156,16 @@ def color_for_disk_rate(mbps: float) -> str:
     return "green"
 
 
+def color_for_power_watts(watts: float) -> str:
+    if watts >= 400:
+        return "red"
+    if watts >= 250:
+        return "yellow"
+    if watts >= 100:
+        return "cyan"
+    return "green"
+
+
 def color_for_load(load_value: float, cpu_count: int) -> str:
     if cpu_count <= 0:
         cpu_count = 1
@@ -849,13 +859,13 @@ class RigMonitor(App):
                     gpu_lines.append(f"[b cyan]GPU {g.index}[/b cyan] [bright_white]{truncate_middle(gpu_name, 32)}[/bright_white]")
                     gpu_lines.append(f"UTIL [{gpu_color}]{g.util}%[/{gpu_color}] [{gpu_color}]{bar(g.util, 100, 43)}[/{gpu_color}]")
                     gpu_lines.append(f"VRAM [{mem_color}]{g.mem_util_pct:.0f}%[/{mem_color}] [{mem_color}]{bar(g.mem_util_pct, 100, 43)}[/{mem_color}]")
-                    fan_text = self.format_wall_fan_value(g)
-                    temp_field = pad_rich_right(f"TEMP [{core_temp_color}]{g.temp_c}°C[/{core_temp_color}]", 24)
-                    j_field = pad_rich_right(f"J [{junction_temp_color}]{g.junction_c}°C[/{junction_temp_color}]" if g.junction_c is not None else "", 16)
-                    v_field = f"V [{vram_temp_color}]{g.vram_c}°C[/{vram_temp_color}]" if g.vram_c is not None else ""
-                    gpu_lines.append(f"{temp_field}{j_field}{v_field}")
-                    fan_field = pad_rich_right(f"FAN {fan_text}", 24)
-                    pwr_field = pad_rich_right(f"PWR [magenta]{g.power_w:.0f}W[/magenta]", 16)
+                    temp_field = pad_rich_right(f"TEMP [{core_temp_color}]{g.temp_c}°C[/{core_temp_color}]", 21)
+                    junc_field = pad_rich_right(f"Junc [{junction_temp_color}]{g.junction_c}°C[/{junction_temp_color}]" if g.junction_c is not None else "", 16)
+                    vram_field = f"Vram [{vram_temp_color}]{g.vram_c}°C[/{vram_temp_color}]" if g.vram_c is not None else ""
+                    gpu_lines.append(f"{temp_field}{junc_field}{vram_field}")
+                    pwr_color = color_for_power_watts(g.power_w)
+                    fan_field = pad_rich_right(f"FAN {self.format_wall_fan_value(g)}", 22)
+                    pwr_field = pad_rich_right(f"PWR [{pwr_color}]{g.power_w:.0f}W[/{pwr_color}]", 15)
                     mem_field = f"MEM [green]{g.mem_used_gb:.1f}/{g.mem_total_gb:.1f}G[/green]"
                     gpu_lines.append(f"{fan_field}{pwr_field}{mem_field}")
                 elif tiny or (wall_mode and self.force_compact_gpu):
