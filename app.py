@@ -859,12 +859,16 @@ class RigMonitor(App):
                     gpu_lines.append(f"[b cyan]GPU {g.index}[/b cyan] [bright_white]{truncate_middle(gpu_name, 32)}[/bright_white]")
                     gpu_lines.append(f"UTIL [{gpu_color}]{g.util:>3}%[/{gpu_color}] [{gpu_color}]{bar(g.util, 100, 43)}[/{gpu_color}]")
                     gpu_lines.append(f"VRAM [{mem_color}]{g.mem_util_pct:>3.0f}%[/{mem_color}] [{mem_color}]{bar(g.mem_util_pct, 100, 43)}[/{mem_color}]")
-                    temp_field = pad_rich_right(f"TEMP [{core_temp_color}]{g.temp_c}°C[/{core_temp_color}]", 21)
+                    temp_field = pad_rich_right(f"TEMP [{core_temp_color}]{g.temp_c:>3}°C[/{core_temp_color}]", 21)
                     junc_field = pad_rich_right(f"Junc [{junction_temp_color}]{g.junction_c}°C[/{junction_temp_color}]" if g.junction_c is not None else "", 16)
                     vram_field = f"Vram [{vram_temp_color}]{g.vram_c}°C[/{vram_temp_color}]" if g.vram_c is not None else ""
                     gpu_lines.append(f"{temp_field}{junc_field}{vram_field}")
                     pwr_color = color_for_power_watts(g.power_w)
-                    fan_field = pad_rich_right(f"FAN {self.format_wall_fan_value(g)}", 22)
+                    fan_value = self.format_wall_fan_value(g)
+                    if g.fan_pct is not None:
+                        fan_color = color_for_fan(g.fan_pct)
+                        fan_value = f"[{fan_color}]{g.fan_pct:>3}%[/{fan_color}]" + (" [green]A[/green]" if (g.fan_control == 0 or (g.fan_pct == 0 and g.temp_c < 50)) else "")
+                    fan_field = pad_rich_right(f"FAN {fan_value}", 22)
                     pwr_field = pad_rich_right(f"PWR [{pwr_color}]{g.power_w:.0f}W[/{pwr_color}]", 15)
                     mem_field = f"MEM [green]{g.mem_used_gb:.1f}/{g.mem_total_gb:.1f}G[/green]"
                     gpu_lines.append(f"{fan_field}{pwr_field}{mem_field}")
