@@ -127,6 +127,33 @@ def color_for_fan(value: int | float | None) -> str:
     return "green"
 
 
+def color_for_net_rate(mbps: float) -> str:
+    if mbps >= 500:
+        return "red"
+    if mbps >= 100:
+        return "yellow"
+    if mbps >= 10:
+        return "cyan"
+    return "green"
+
+
+def color_for_disk_rate(mbps: float) -> str:
+    if mbps >= 1500:
+        return "red"
+    if mbps >= 500:
+        return "yellow"
+    if mbps >= 100:
+        return "cyan"
+    return "green"
+
+
+def color_for_load(load_value: float, cpu_count: int) -> str:
+    if cpu_count <= 0:
+        cpu_count = 1
+    pct = (load_value / cpu_count) * 100.0
+    return color_for_pct(pct)
+
+
 def heat_sparkline(values: List[float], width: int | None = None) -> str:
     if not values:
         return ""
@@ -183,6 +210,8 @@ class MetricBox(Static):
 class RigMonitor(App):
     CSS_PATH = None
     BINDINGS = [
+        Binding("ctrl+c", "quit", "Quit", show=False),
+        Binding("ctrl+q", "quit", "Quit", show=False),
         Binding("c", "toggle_cores", "Toggle cores"),
         Binding("w", "toggle_wall_mode", "Toggle wall mode"),
         Binding("f", "toggle_core_density", "Toggle core density"),
@@ -617,8 +646,8 @@ class RigMonitor(App):
         lines = ["[b bright_white]TINY MODE[/b bright_white]", ""]
         lines.append(f"CPU [{cpu_color}]{cpu:.0f}%[/{cpu_color}] [{cpu_color}]{bar(cpu, 100, 10)}[/{cpu_color}] {truncate_middle(short_cpu, 18)}")
         lines.append(f"RAM [{ram_color}]{vm.percent:.0f}%[/{ram_color}] [{ram_color}]{bar(vm.percent, 100, 10)}[/{ram_color}] free [cyan]{vm.available / 1024**3:.0f}G[/cyan]")
-        lines.append(f"NET [bright_blue]↓ {format_rate(down_mb)}[/bright_blue] [cyan]↑ {format_rate(up_mb)}[/cyan]")
-        lines.append(f"DSK [bright_blue]R {format_rate(read_mb)}[/bright_blue] [cyan]W {format_rate(write_mb)}[/cyan]")
+        lines.append(f"NET [{color_for_net_rate(down_mb)}]↓ {format_rate(down_mb)}[/{color_for_net_rate(down_mb)}] [{color_for_net_rate(up_mb)}]↑ {format_rate(up_mb)}[/{color_for_net_rate(up_mb)}]")
+        lines.append(f"DSK [{color_for_disk_rate(read_mb)}]R {format_rate(read_mb)}[/{color_for_disk_rate(read_mb)}] [{color_for_disk_rate(write_mb)}]W {format_rate(write_mb)}[/{color_for_disk_rate(write_mb)}]")
         lines.append("")
         lines.append("[b bright_white]CPU CORES[/b bright_white]")
         shown_cores = cpu_per_core[:(len(cpu_per_core) if self.show_all_cores else 4)]
@@ -688,7 +717,15 @@ class RigMonitor(App):
         ram_bar = bar(vm.percent, 100, 10 if compact else 16)
         cpu_color = color_for_pct(cpu)
         ram_color = color_for_pct(vm.percent)
+        avail_color = color_for_pct(100 - (vm.available / vm.total * 100.0 if vm.total else 0.0))
+        load1_color = color_for_load(load[0], self.cpu_core_count)
+        load5_color = color_for_load(load[1], self.cpu_core_count)
+        load15_color = color_for_load(load[2], self.cpu_core_count)
         net_peak = max(list(self.net_down_hist) + list(self.net_up_hist) + [0.05])
+        down_color = color_for_net_rate(down_mb)
+        up_color = color_for_net_rate(up_mb)
+        read_color = color_for_disk_rate(read_mb)
+        write_color = color_for_disk_rate(write_mb)
         if tiny:
             short_cpu = self.cpu_name.replace('AMD ', '').replace('Processor', '').strip()
             self.cpu_box.value = (
@@ -697,39 +734,39 @@ class RigMonitor(App):
             )
             self.ram_box.value = (
                 f"[{ram_color}]{vm.percent:.0f}%[/{ram_color}] [{ram_color}]{bar(vm.percent, 100, 8)}[/{ram_color}]\n"
-                f"free [cyan]{vm.available / 1024**3:.0f}G[/cyan]"
+                f"free [{avail_color}]{vm.available / 1024**3:.0f}G[/{avail_color}]"
             )
             self.net_box.value = (
-                f"[bright_blue]↓ {format_rate(down_mb)}[/bright_blue]\n"
-                f"[cyan]↑ {format_rate(up_mb)}[/cyan]"
+                f"[{down_color}]↓ {format_rate(down_mb)}[/{down_color}]\n"
+                f"[{up_color}]↑ {format_rate(up_mb)}[/{up_color}]"
             )
             self.disk_box.value = (
-                f"[bright_blue]R {format_rate(read_mb)}[/bright_blue]\n"
-                f"[cyan]W {format_rate(write_mb)}[/cyan]"
+                f"[{read_color}]R {format_rate(read_mb)}[/{read_color}]\n"
+                f"[{write_color}]W {format_rate(write_mb)}[/{write_color}]"
             )
         else:
             full_cpu_label = truncate_middle(self.cpu_name, 42)
             self.cpu_box.value = (
                 f"{full_cpu_label}\n"
                 f"[{cpu_color}]{cpu:.0f}%[/{cpu_color}]  [{cpu_color}]{bar(cpu, 100, 16)}[/{cpu_color}]\n"
-                f"[yellow]load {load[0]:.1f} {load[1]:.1f} {load[2]:.1f}[/yellow]"
+                f"load [{load1_color}]{load[0]:.1f}[/{load1_color}] [{load5_color}]{load[1]:.1f}[/{load5_color}] [{load15_color}]{load[2]:.1f}[/{load15_color}]"
             )
             self.ram_box.value = (
-                f"[green]{vm.used / 1024**3:.1f}[/green] / [cyan]{vm.total / 1024**3:.1f} GB[/cyan]\n"
-                f"[{ram_color}]{vm.percent:.0f}%[/{ram_color}]  [{ram_color}]{bar(vm.percent, 100, 16)}[/{ram_color}]\n"
-                f"avail [cyan]{vm.available / 1024**3:.1f} GB[/cyan]"
+                f"used [{ram_color}]{vm.used / 1024**3:.1f}G[/{ram_color}] / [bright_white]{vm.total / 1024**3:.1f}G[/bright_white]\n"
+                f"[{ram_color}]{vm.percent:>3.0f}%[/{ram_color}]  [{ram_color}]{bar(vm.percent, 100, 18)}[/{ram_color}]\n"
+                f"free [{avail_color}]{vm.available / 1024**3:.1f}G[/{avail_color}]"
             )
             self.net_box.value = (
-                f"[bright_blue]↓ {format_rate(down_mb)}[/bright_blue]\n"
-                f"[cyan]↑ {format_rate(up_mb)}[/cyan]\n"
-                f"[bright_blue]{sparkline(list(self.net_down_hist), max_value=net_peak, width=24)}[/bright_blue]\n"
-                f"[cyan]{sparkline(list(self.net_up_hist), max_value=net_peak, width=24)}[/cyan]"
+                f"[{down_color}]↓ {format_rate(down_mb)}[/{down_color}]\n"
+                f"[{up_color}]↑ {format_rate(up_mb)}[/{up_color}]\n"
+                f"[{down_color}]{sparkline(list(self.net_down_hist), max_value=net_peak, width=24)}[/{down_color}]\n"
+                f"[{up_color}]{sparkline(list(self.net_up_hist), max_value=net_peak, width=24)}[/{up_color}]"
             )
             self.disk_box.value = (
-                f"[bright_blue]R {format_rate(read_mb)}[/bright_blue]\n"
-                f"[cyan]W {format_rate(write_mb)}[/cyan]\n"
-                f"[bright_blue]{sparkline(list(self.disk_read_hist), width=24)}[/bright_blue]\n"
-                f"[cyan]{sparkline(list(self.disk_write_hist), width=24)}[/cyan]"
+                f"[{read_color}]R {format_rate(read_mb)}[/{read_color}]\n"
+                f"[{write_color}]W {format_rate(write_mb)}[/{write_color}]\n"
+                f"[{read_color}]{sparkline(list(self.disk_read_hist), width=24)}[/{read_color}]\n"
+                f"[{write_color}]{sparkline(list(self.disk_write_hist), width=24)}[/{write_color}]"
             )
 
         gpu_rows = self.get_gpu_rows()
@@ -785,9 +822,9 @@ class RigMonitor(App):
                 vram_temp_color = color_for_temp(g.vram_c, warm=80, hot=95)
                 gpu_name = g.name if compact else truncate_middle(g.name, 40)
                 if wall_mode and not self.force_compact_gpu:
-                    gpu_lines.append(f"[b cyan]GPU {g.index}[/b cyan] [bright_white]{truncate_middle(gpu_name, 22)}[/bright_white]")
-                    gpu_lines.append(f"UTIL [{gpu_color}]{g.util:>3}%[/{gpu_color}] [{gpu_color}]{bar(g.util, 100, 20)}[/{gpu_color}]")
-                    gpu_lines.append(f"VRAM [{mem_color}]{g.mem_util_pct:>3.0f}%[/{mem_color}] [{mem_color}]{bar(g.mem_util_pct, 100, 20)}[/{mem_color}]")
+                    gpu_lines.append(f"[b cyan]GPU {g.index}[/b cyan] [bright_white]{truncate_middle(gpu_name, 32)}[/bright_white]")
+                    gpu_lines.append(f"UTIL [{gpu_color}]{g.util:>3}%[/{gpu_color}] [{gpu_color}]{bar(g.util, 100, 43)}[/{gpu_color}]")
+                    gpu_lines.append(f"VRAM [{mem_color}]{g.mem_util_pct:>3.0f}%[/{mem_color}] [{mem_color}]{bar(g.mem_util_pct, 100, 43)}[/{mem_color}]")
                     temp_line = f"TEMP [{core_temp_color}]{g.temp_c}°C[/{core_temp_color}]"
                     if g.junction_c is not None:
                         temp_line += f"  J [{junction_temp_color}]{g.junction_c}°C[/{junction_temp_color}]"
@@ -801,7 +838,7 @@ class RigMonitor(App):
                     if g.vram_c is not None:
                         tiny_temp += f" [{vram_temp_color}]V{g.vram_c}°[/{vram_temp_color}]"
                     gpu_lines.append(
-                        f"[b cyan]G{g.index}[/b cyan] {truncate_middle(gpu_name, 20)}  [{gpu_color}]{g.util:>3}%[/{gpu_color}]  [{mem_color}]{g.mem_util_pct:>3.0f}% mem[/{mem_color}]  {tiny_temp}  {self.format_fan_label(g, compact=True)}  [magenta]{g.power_w:.0f}W[/magenta]"
+                        f"[b cyan]G{g.index}[/b cyan] {truncate_middle(gpu_name, 24)}  [{gpu_color}]{g.util:>3}%[/{gpu_color}]  [{mem_color}]{g.mem_util_pct:>3.0f}% mem[/{mem_color}]  {tiny_temp}  {self.format_fan_label(g, compact=True)}  [magenta]{g.power_w:.0f}W[/magenta]"
                     )
                 elif compact:
                     gpu_lines.append(f"[b cyan]GPU {g.index}[/b cyan] [bright_white]{gpu_name}[/bright_white]")
