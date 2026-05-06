@@ -166,19 +166,6 @@ def color_for_load(load_value: float, cpu_count: int) -> str:
 
 
 def get_gpu_average_fan_pct(handle) -> int | None:
-    speeds = []
-    try:
-        fan_count = int(pynvml.nvmlDeviceGetNumFans(handle))
-    except Exception:
-        fan_count = 0
-    if fan_count > 0 and hasattr(pynvml, "nvmlDeviceGetFanSpeed_v2"):
-        for fan_idx in range(fan_count):
-            try:
-                speeds.append(int(pynvml.nvmlDeviceGetFanSpeed_v2(handle, fan_idx)))
-            except Exception:
-                continue
-    if speeds:
-        return int(round(sum(speeds) / len(speeds)))
     try:
         return int(pynvml.nvmlDeviceGetFanSpeed(handle))
     except Exception:
@@ -538,11 +525,7 @@ class RigMonitor(App):
             return "[white]--%[/white]"
         fan_color = color_for_fan(g.fan_pct)
         value = f"[{fan_color}]{g.fan_pct}%[/{fan_color}]"
-        if g.fan_pct == 0 and g.temp_c < 50:
-            value += " [green]A[/green]"
-        elif g.fan_control == 1 and g.fan_target_pct is not None:
-            value += f"→[{fan_color}]{g.fan_target_pct}%[/{fan_color}]"
-        elif g.fan_control == 0:
+        if g.fan_control == 0 or (g.fan_pct == 0 and g.temp_c < 50):
             value += " [green]A[/green]"
         return value
 
