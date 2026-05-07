@@ -222,3 +222,15 @@ bash ~/rig-monitor/scripts/uninstall.sh
 ```
 
 This removes the launchers, temp wrapper, sudoers rule, and cloned gputemps repo.
+
+---
+
+## License
+
+This project is **not MIT licensed**.
+
+It is source-available for personal, educational, hobby, research, and other non-commercial use under the **FTWLIEN Non-Commercial License v1.0** in [`LICENSE`](LICENSE).
+
+Commercial use is prohibited without prior written permission from the copyright holder. That includes hosting, resale, paid services, integration into commercial products or workflows, internal business use, or use by companies to support commercial GPU, AI, cloud, hosting, compute, or Vast.ai infrastructure.
+
+Businesses and commercial users need a separate written commercial license. See [`COMMERCIAL_LICENSE.md`](COMMERCIAL_LICENSE.md).
