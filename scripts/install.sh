@@ -5,6 +5,7 @@ REPO_DIR="${HOME}/rig-monitor"
 BIN_DIR="${HOME}/.local/bin"
 LAUNCHER="${BIN_DIR}/rig-monitor"
 GLOBAL_LAUNCHER="/usr/local/bin/rig-monitor"
+BURN_CLEANUP_BIN="/usr/local/bin/rig-burn-cleanup"
 GPU_TEMP_REPO="${HOME}/gddr6-core-junction-vram-temps"
 GPU_TEMP_REPO_URL="https://github.com/ThomasBaruzier/gddr6-core-junction-vram-temps.git"
 
@@ -93,6 +94,13 @@ else
 fi
 rm -f "$GLOBAL_TMP"
 
+if [ -w /usr/local/bin ]; then
+  install -m 0755 "$REPO_DIR/scripts/rig-burn-cleanup.sh" "$BURN_CLEANUP_BIN"
+else
+  echo "Installing rig-burn-cleanup with sudo..."
+  sudo install -m 0755 "$REPO_DIR/scripts/rig-burn-cleanup.sh" "$BURN_CLEANUP_BIN"
+fi
+
 if [ ! -d "$GPU_TEMP_REPO/.git" ]; then
   git clone "$GPU_TEMP_REPO_URL" "$GPU_TEMP_REPO"
 else
@@ -138,6 +146,7 @@ chmod +x "${HOME}/.gputemps-wrapper.sh"
 
 echo "Installed rig-monitor launcher to $LAUNCHER"
 echo "Installed global rig-monitor launcher to $GLOBAL_LAUNCHER"
+echo "Installed burn cleanup helper to $BURN_CLEANUP_BIN"
 echo "Installed gputemps to /usr/local/bin/gputemps"
 echo "Installed sudoers rule: /etc/sudoers.d/rig-monitor-gputemps"
 echo

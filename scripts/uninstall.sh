@@ -5,6 +5,7 @@ REPO_DIR="${HOME}/rig-monitor"
 BIN_DIR="${HOME}/.local/bin"
 LAUNCHER="${BIN_DIR}/rig-monitor"
 GLOBAL_LAUNCHER="/usr/local/bin/rig-monitor"
+BURN_CLEANUP_BIN="/usr/local/bin/rig-burn-cleanup"
 GPU_TEMP_REPO="${HOME}/gddr6-core-junction-vram-temps"
 GPU_TEMP_BIN="/usr/local/bin/gputemps"
 GPU_TEMP_WRAPPER="${HOME}/.gputemps-wrapper.sh"
@@ -46,6 +47,15 @@ if [ -e "$GLOBAL_LAUNCHER" ] || [ -L "$GLOBAL_LAUNCHER" ]; then
     sudo rm -f "$GLOBAL_LAUNCHER"
   fi
   echo "Removed $GLOBAL_LAUNCHER"
+fi
+
+if [ -e "$BURN_CLEANUP_BIN" ] || [ -L "$BURN_CLEANUP_BIN" ]; then
+  if [ -w /usr/local/bin ]; then
+    rm -f "$BURN_CLEANUP_BIN"
+  else
+    sudo rm -f "$BURN_CLEANUP_BIN"
+  fi
+  echo "Removed $BURN_CLEANUP_BIN"
 fi
 
 if [ -e "$SUDOERS_RULE" ] || [ -L "$SUDOERS_RULE" ]; then

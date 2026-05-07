@@ -176,6 +176,19 @@ Wall mode prioritizes GPU visibility and high-core-count CPU readability. Standa
 
 ---
 
+
+### Burn-test cleanup helper
+
+If a local stress test gets suspended or leaves orphaned workers behind, run:
+
+```bash
+sudo rig-burn-cleanup
+```
+
+It lists matching `full_burn`, `ram_burn`, `stressapptest`, `gpu_burn`, `stress-ng`, and old `memtester` processes, asks you to type `KILL BURNS`, then terminates leftovers with TERM → KILL.
+
+Use this only when you intentionally want to stop local stress tests.
+
 ## Troubleshooting
 
 ### Command not found
