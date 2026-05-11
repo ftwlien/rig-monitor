@@ -173,6 +173,60 @@ def color_for_load(load_value: float, cpu_count: int) -> str:
     return color_for_pct(pct)
 
 
+def get_cpu_temp_c() -> float | None:
+    """Return the best available CPU/package temperature in Celsius."""
+    try:
+        temps = psutil.sensors_temperatures(fahrenheit=False) or {}
+        preferred_labels = ("tctl", "tdie", "package id 0", "cpu", "composite")
+        candidates: list[tuple[str, float]] = []
+        for entries in temps.values():
+            for entry in entries:
+                current = getattr(entry, "current", None)
+                if current is None:
+                    continue
+                label = str(getattr(entry, "label", "") or "").lower()
+                if 5 <= float(current) <= 120:
+                    candidates.append((label, float(current)))
+        for wanted in preferred_labels:
+            vals = [value for label, value in candidates if wanted in label]
+            if vals:
+                return max(vals)
+        if candidates:
+            return max(value for _, value in candidates)
+    except Exception:
+        pass
+
+    candidates: list[float] = []
+    for root in ("/sys/class/hwmon", "/sys/class/thermal"):
+        try:
+            entries = list(os.scandir(root))
+        except Exception:
+            entries = []
+        for entry in entries:
+            base = entry.path
+            try:
+                label_blob = ""
+                for name in ("name", "type"):
+                    path = os.path.join(base, name)
+                    if os.path.exists(path):
+                        with open(path, "r", encoding="utf-8", errors="ignore") as f:
+                            label_blob += " " + f.read().strip().lower()
+                if any(skip in label_blob for skip in ("gpu", "amdgpu", "nvidia", "nouveau", "nvme")):
+                    continue
+                for temp_entry in os.scandir(base):
+                    if not temp_entry.name.startswith("temp") or not temp_entry.name.endswith("_input"):
+                        continue
+                    with open(temp_entry.path, "r", encoding="utf-8", errors="ignore") as f:
+                        raw = f.read().strip()
+                    value = float(raw)
+                    value = value / 1000.0 if value > 200 else value
+                    if 5 <= value <= 120:
+                        candidates.append(value)
+            except Exception:
+                continue
+    return max(candidates) if candidates else None
+
+
 
 
 def get_gpu_average_fan_pct(handle) -> int | None:
@@ -673,12 +727,14 @@ class RigMonitor(App):
             trimmed.append((pid, truncate_middle(name, 14 if compact else 20), cpu_p, mem_p))
         return trimmed
 
-    def build_tiny_layout(self, cpu, cpu_title, vm, down_mb, up_mb, read_mb, write_mb, cpu_per_core, gpu_rows, gpu_proc_rows):
+    def build_tiny_layout(self, cpu, cpu_title, cpu_temp, vm, down_mb, up_mb, read_mb, write_mb, cpu_per_core, gpu_rows, gpu_proc_rows):
         cpu_color = color_for_pct(cpu)
+        cpu_temp_color = color_for_temp(cpu_temp, warm=75, hot=90)
         ram_color = color_for_pct(vm.percent)
         short_cpu = cpu_title.replace('AMD ', '').replace('Processor', '').strip()
         lines = ["[b bright_white]TINY MODE[/b bright_white]", ""]
-        lines.append(f"CPU [{cpu_color}]{cpu:.0f}%[/{cpu_color}] [{cpu_color}]{bar(cpu, 100, 10)}[/{cpu_color}] {truncate_middle(short_cpu, 18)}")
+        temp_text = f" [{cpu_temp_color}]{cpu_temp:.0f}°C[/{cpu_temp_color}]" if cpu_temp is not None else ""
+        lines.append(f"CPU [{cpu_color}]{cpu:.0f}%[/{cpu_color}] [{cpu_color}]{bar(cpu, 100, 10)}[/{cpu_color}]{temp_text} {truncate_middle(short_cpu, 18)}")
         lines.append(f"RAM [{ram_color}]{vm.percent:.0f}%[/{ram_color}] [{ram_color}]{bar(vm.percent, 100, 10)}[/{ram_color}] free [cyan]{vm.available / 1024**3:.0f}G[/cyan]")
         lines.append(f"NET [{color_for_net_rate(down_mb)}]↓ {format_rate(down_mb)}[/{color_for_net_rate(down_mb)}] [{color_for_net_rate(up_mb)}]↑ {format_rate(up_mb)}[/{color_for_net_rate(up_mb)}]")
         lines.append(f"DSK [{color_for_disk_rate(read_mb)}]R {format_rate(read_mb)}[/{color_for_disk_rate(read_mb)}] [{color_for_disk_rate(write_mb)}]W {format_rate(write_mb)}[/{color_for_disk_rate(write_mb)}]")
@@ -725,6 +781,7 @@ class RigMonitor(App):
         dt = max(now - self.last_ts, 0.0001)
 
         cpu = psutil.cpu_percent(interval=None)
+        cpu_temp = get_cpu_temp_c()
         cpu_per_core = psutil.cpu_percent(interval=None, percpu=True)
         load = psutil.getloadavg()
         vm = psutil.virtual_memory()
@@ -750,6 +807,8 @@ class RigMonitor(App):
         cpu_bar = bar(cpu, 100, 10 if compact else 16)
         ram_bar = bar(vm.percent, 100, 10 if compact else 16)
         cpu_color = color_for_pct(cpu)
+        cpu_temp_color = color_for_temp(cpu_temp, warm=75, hot=90)
+        cpu_temp_line = f" temp [{cpu_temp_color}]{cpu_temp:.0f}°C[/{cpu_temp_color}]" if cpu_temp is not None else " temp [white]--°C[/white]"
         ram_color = color_for_pct(vm.percent)
         avail_color = color_for_pct(100 - (vm.available / vm.total * 100.0 if vm.total else 0.0))
         load1_color = color_for_load(load[0], self.cpu_core_count)
@@ -763,7 +822,7 @@ class RigMonitor(App):
         if tiny:
             short_cpu = self.cpu_name.replace('AMD ', '').replace('Processor', '').strip()
             self.cpu_box.value = (
-                f"[{cpu_color}]{cpu:.0f}%[/{cpu_color}] [{cpu_color}]{bar(cpu, 100, 8)}[/{cpu_color}]\n"
+                f"[{cpu_color}]{cpu:.0f}%[/{cpu_color}] [{cpu_color}]{bar(cpu, 100, 8)}[/{cpu_color}]{cpu_temp_line}\n"
                 f"{cpu_short}{mode_tag}"
             )
             self.ram_box.value = (
@@ -782,7 +841,7 @@ class RigMonitor(App):
             full_cpu_label = truncate_middle(self.cpu_name, 42)
             self.cpu_box.value = (
                 f"{full_cpu_label}\n"
-                f"[{cpu_color}]{cpu:.0f}%[/{cpu_color}]  [{cpu_color}]{bar(cpu, 100, 16)}[/{cpu_color}]\n"
+                f"[{cpu_color}]{cpu:.0f}%[/{cpu_color}]  [{cpu_color}]{bar(cpu, 100, 16)}[/{cpu_color}]{cpu_temp_line}\n"
                 f"load [{load1_color}]{load[0]:.1f}[/{load1_color}] [{load5_color}]{load[1]:.1f}[/{load5_color}] [{load15_color}]{load[2]:.1f}[/{load15_color}]"
             )
             self.ram_box.value = (
