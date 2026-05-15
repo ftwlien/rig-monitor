@@ -2,10 +2,13 @@ import json
 import os
 import re
 import subprocess
+import textwrap
 import time
 from collections import deque
 from dataclasses import dataclass
 from typing import Deque, List
+
+from rich.markup import escape
 
 import psutil
 from textual.app import App, ComposeResult
@@ -173,6 +176,95 @@ def color_for_load(load_value: float, cpu_count: int) -> str:
     return color_for_pct(pct)
 
 
+def _read_float_file(path: str) -> float | None:
+    try:
+        with open(path, "r", encoding="utf-8", errors="ignore") as f:
+            raw = f.read().strip()
+        if not raw:
+            return None
+        return float(raw)
+    except Exception:
+        return None
+
+
+def get_cpu_power_watts() -> float | None:
+    """Return best available CPU/package power in watts.
+
+    This intentionally avoids GPU/NVMe/iGPU hwmon devices so we don't display
+    the wrong watts. On many AMD desktop boards the stock kernel exposes temp
+    via k10temp but not package power; zenpower/amd_energy/powercap may add it.
+    """
+    candidates: list[tuple[int, float]] = []
+
+    # Linux powercap/RAPL style. Prefer direct power_uw if present.
+    for root, _, files in os.walk("/sys/class/powercap"):
+        if "power_uw" not in files:
+            continue
+        label_blob = ""
+        for name in ("name", "device/name"):
+            path = os.path.join(root, name)
+            try:
+                with open(path, "r", encoding="utf-8", errors="ignore") as f:
+                    label_blob += " " + f.read().strip().lower()
+            except Exception:
+                pass
+        if any(skip in label_blob for skip in ("gpu", "amdgpu", "nvidia", "nvme")):
+            continue
+        raw = _read_float_file(os.path.join(root, "power_uw"))
+        if raw is not None:
+            watts = raw / 1_000_000.0
+            if 0 <= watts <= 1000:
+                score = 3 if any(x in label_blob for x in ("package", "pkg", "cpu", "rapl")) else 1
+                candidates.append((score, watts))
+
+    # hwmon style: power*_input / power*_average are microwatts.
+    try:
+        hwmons = list(os.scandir("/sys/class/hwmon"))
+    except Exception:
+        hwmons = []
+    for entry in hwmons:
+        base = entry.path
+        try:
+            device_name = ""
+            name_path = os.path.join(base, "name")
+            if os.path.exists(name_path):
+                with open(name_path, "r", encoding="utf-8", errors="ignore") as f:
+                    device_name = f.read().strip().lower()
+            if any(skip in device_name for skip in ("gpu", "amdgpu", "nvidia", "nouveau", "nvme", "iwlwifi")):
+                continue
+            for item in os.scandir(base):
+                if not (item.name.startswith("power") and (item.name.endswith("_input") or item.name.endswith("_average"))):
+                    continue
+                prefix = item.name.rsplit("_", 1)[0]
+                label = ""
+                label_path = os.path.join(base, prefix + "_label")
+                if os.path.exists(label_path):
+                    with open(label_path, "r", encoding="utf-8", errors="ignore") as f:
+                        label = f.read().strip().lower()
+                blob = f"{device_name} {label}"
+                if any(skip in blob for skip in ("gpu", "amdgpu", "nvidia", "nouveau", "nvme")):
+                    continue
+                raw = _read_float_file(item.path)
+                if raw is None:
+                    continue
+                watts = raw / 1_000_000.0 if raw > 10000 else raw
+                if not (0 <= watts <= 1000):
+                    continue
+                score = 1
+                if any(wanted in blob for wanted in ("package", "socket", "cpu", "ppt", "tdp", "core")):
+                    score = 4
+                if "k10temp" in blob or "zenpower" in blob or "fam" in blob:
+                    score += 1
+                candidates.append((score, watts))
+        except Exception:
+            continue
+
+    if not candidates:
+        return None
+    candidates.sort(key=lambda item: item[0], reverse=True)
+    return candidates[0][1]
+
+
 def get_cpu_temp_c() -> float | None:
     """Return the best available CPU/package temperature in Celsius."""
     try:
@@ -297,6 +389,7 @@ class RigMonitor(App):
         Binding("w", "toggle_wall_mode", "Toggle wall mode"),
         Binding("f", "toggle_core_density", "Toggle core density"),
         Binding("g", "toggle_compact_gpu", "Toggle compact GPU"),
+        Binding("t", "toggle_full_commands", "Full command text"),
         Binding("b", "toggle_black_mode", "Toggle black mode"),
         Binding("p", "toggle_scrollbars", "Toggle scrollbars"),
     ]
@@ -404,6 +497,7 @@ class RigMonitor(App):
         self.force_wall_mode = True
         self.compact_core_density = True
         self.force_compact_gpu = False
+        self.show_full_commands = False
         self.black_mode = False
         self.scrollbars_visible = False
         self.theme = 'ansi-dark'
@@ -457,6 +551,21 @@ class RigMonitor(App):
     def action_toggle_compact_gpu(self) -> None:
         self.force_compact_gpu = not self.force_compact_gpu
         self.refresh_stats()
+
+    def action_toggle_full_commands(self) -> None:
+        self.show_full_commands = not self.show_full_commands
+        self.refresh_stats()
+
+    def _format_gpu_command_lines(self, row: GpuProcRow, width: int, indent: str = "") -> list[str]:
+        if not self.show_full_commands:
+            return [escape(truncate_middle(row.cmd, width))]
+        wrapped = textwrap.wrap(
+            row.cmd,
+            width=max(24, width),
+            break_long_words=False,
+            break_on_hyphens=False,
+        ) or [row.cmd]
+        return [(indent if i else "") + escape(part) for i, part in enumerate(wrapped)]
 
     def _apply_scrollbar_style(self) -> None:
         for w in self.query(VerticalScroll):
@@ -727,14 +836,16 @@ class RigMonitor(App):
             trimmed.append((pid, truncate_middle(name, 14 if compact else 20), cpu_p, mem_p))
         return trimmed
 
-    def build_tiny_layout(self, cpu, cpu_title, cpu_temp, vm, down_mb, up_mb, read_mb, write_mb, cpu_per_core, gpu_rows, gpu_proc_rows):
+    def build_tiny_layout(self, cpu, cpu_title, cpu_temp, cpu_power, vm, down_mb, up_mb, read_mb, write_mb, cpu_per_core, gpu_rows, gpu_proc_rows):
         cpu_color = color_for_pct(cpu)
         cpu_temp_color = color_for_temp(cpu_temp, warm=75, hot=90)
         ram_color = color_for_pct(vm.percent)
         short_cpu = cpu_title.replace('AMD ', '').replace('Processor', '').strip()
         lines = ["[b bright_white]TINY MODE[/b bright_white]", ""]
         temp_text = f" [{cpu_temp_color}]{cpu_temp:.0f}°C[/{cpu_temp_color}]" if cpu_temp is not None else ""
-        lines.append(f"CPU [{cpu_color}]{cpu:.0f}%[/{cpu_color}] [{cpu_color}]{bar(cpu, 100, 10)}[/{cpu_color}]{temp_text} {truncate_middle(short_cpu, 18)}")
+        cpu_power_color = color_for_power_watts(cpu_power or 0)
+        power_text = f" [{cpu_power_color}]{cpu_power:.0f}W[/{cpu_power_color}]" if cpu_power is not None else " [white]--W[/white]"
+        lines.append(f"CPU [{cpu_color}]{cpu:.0f}%[/{cpu_color}] [{cpu_color}]{bar(cpu, 100, 10)}[/{cpu_color}]{temp_text}{power_text} {truncate_middle(short_cpu, 18)}")
         lines.append(f"RAM [{ram_color}]{vm.percent:.0f}%[/{ram_color}] [{ram_color}]{bar(vm.percent, 100, 10)}[/{ram_color}] free [cyan]{vm.available / 1024**3:.0f}G[/cyan]")
         lines.append(f"NET [{color_for_net_rate(down_mb)}]↓ {format_rate(down_mb)}[/{color_for_net_rate(down_mb)}] [{color_for_net_rate(up_mb)}]↑ {format_rate(up_mb)}[/{color_for_net_rate(up_mb)}]")
         lines.append(f"DSK [{color_for_disk_rate(read_mb)}]R {format_rate(read_mb)}[/{color_for_disk_rate(read_mb)}] [{color_for_disk_rate(write_mb)}]W {format_rate(write_mb)}[/{color_for_disk_rate(write_mb)}]")
@@ -782,6 +893,7 @@ class RigMonitor(App):
 
         cpu = psutil.cpu_percent(interval=None)
         cpu_temp = get_cpu_temp_c()
+        cpu_power = get_cpu_power_watts()
         cpu_per_core = psutil.cpu_percent(interval=None, percpu=True)
         load = psutil.getloadavg()
         vm = psutil.virtual_memory()
@@ -802,6 +914,8 @@ class RigMonitor(App):
         mode_tag = " [WALL]" if wall_mode else " [STD]"
         if self.force_compact_gpu:
             mode_tag += " [GPU-C]"
+        if self.show_full_commands:
+            mode_tag += " [CMD-FULL]"
         cpu_title = truncate_middle(self.cpu_name, 28 if compact else 42)
         cpu_short = short_cpu_label(self.cpu_name)
         cpu_bar = bar(cpu, 100, 10 if compact else 16)
@@ -809,6 +923,8 @@ class RigMonitor(App):
         cpu_color = color_for_pct(cpu)
         cpu_temp_color = color_for_temp(cpu_temp, warm=75, hot=90)
         cpu_temp_line = f" temp [{cpu_temp_color}]{cpu_temp:.0f}°C[/{cpu_temp_color}]" if cpu_temp is not None else " temp [white]--°C[/white]"
+        cpu_power_color = color_for_power_watts(cpu_power or 0)
+        cpu_power_line = f" · [{cpu_power_color}]{cpu_power:.0f}W[/{cpu_power_color}]" if cpu_power is not None else " · [white]--W[/white]"
         ram_color = color_for_pct(vm.percent)
         avail_color = color_for_pct(100 - (vm.available / vm.total * 100.0 if vm.total else 0.0))
         load1_color = color_for_load(load[0], self.cpu_core_count)
@@ -822,7 +938,7 @@ class RigMonitor(App):
         if tiny:
             short_cpu = self.cpu_name.replace('AMD ', '').replace('Processor', '').strip()
             self.cpu_box.value = (
-                f"[{cpu_color}]{cpu:.0f}%[/{cpu_color}] [{cpu_color}]{bar(cpu, 100, 8)}[/{cpu_color}]{cpu_temp_line}\n"
+                f"[{cpu_color}]{cpu:.0f}%[/{cpu_color}] [{cpu_color}]{bar(cpu, 100, 8)}[/{cpu_color}]{cpu_temp_line}{cpu_power_line}\n"
                 f"{cpu_short}{mode_tag}"
             )
             self.ram_box.value = (
@@ -841,7 +957,7 @@ class RigMonitor(App):
             full_cpu_label = truncate_middle(self.cpu_name, 42)
             self.cpu_box.value = (
                 f"{full_cpu_label}\n"
-                f"[{cpu_color}]{cpu:.0f}%[/{cpu_color}]  [{cpu_color}]{bar(cpu, 100, 16)}[/{cpu_color}]{cpu_temp_line}\n"
+                f"[{cpu_color}]{cpu:.0f}%[/{cpu_color}]  [{cpu_color}]{bar(cpu, 100, 16)}[/{cpu_color}]{cpu_temp_line}{cpu_power_line}\n"
                 f"load [{load1_color}]{load[0]:.1f}[/{load1_color}] [{load5_color}]{load[1]:.1f}[/{load5_color}] [{load15_color}]{load[2]:.1f}[/{load15_color}]"
             )
             self.ram_box.value = (
@@ -975,32 +1091,34 @@ class RigMonitor(App):
         gpu_body.extend(gpu_lines)
         gpu_body.append("")
         gpu_body.append("─" * 34)
-        gpu_body.append("[b bright_white]GPU WORKLOAD[/b bright_white]")
+        gpu_body.append(f"[b bright_white]GPU WORKLOAD[/b bright_white] [{'green' if self.show_full_commands else 'white'}]T: {'full commands' if self.show_full_commands else 'truncated'}[/{'green' if self.show_full_commands else 'white'}]")
         if gpu_proc_rows:
             if wall_mode:
                 gpu_body.append("GPU PID      GPU-MEM  MEM%  CPU%  RAM%  COMMAND")
                 for row in gpu_proc_rows:
-                    cmd = truncate_middle(row.cmd, 28)
+                    cmd_lines = self._format_gpu_command_lines(row, 92 if self.show_full_commands else 28, indent=" " * 48)
                     gpu_body.append(
-                        f"[magenta]{row.gpu}[/magenta]   {row.pid:<8} [yellow]{row.mem_mib:>4.0f}M[/yellow]   {row.mem_pct:>4.1f}  [cyan]{row.cpu_pct:>4.1f}[/cyan]  [green]{row.ram_pct:>4.1f}[/green]  {cmd}"
+                        f"[magenta]{row.gpu}[/magenta]   {row.pid:<8} [yellow]{row.mem_mib:>4.0f}M[/yellow]   {row.mem_pct:>4.1f}  [cyan]{row.cpu_pct:>4.1f}[/cyan]  [green]{row.ram_pct:>4.1f}[/green]  {cmd_lines[0]}"
                     )
+                    gpu_body.extend(cmd_lines[1:])
             elif compact:
                 compact_gpu_proc_rows = gpu_proc_rows[:2]
                 for row in compact_gpu_proc_rows:
                     gpu_body.append(
                         f"GPU{row.gpu}  [yellow]{row.mem_mib:>4.0f} MiB[/yellow]  [cyan]{row.cpu_pct:>3.0f}%[/cyan]"
                     )
-                    gpu_body.append(f"{truncate_middle(row.cmd, 30)}")
+                    gpu_body.extend(self._format_gpu_command_lines(row, 90 if self.show_full_commands else 30, indent="  "))
                     gpu_body.append("")
                 if len(gpu_proc_rows) > len(compact_gpu_proc_rows):
                     gpu_body.append(f"... {len(gpu_proc_rows) - len(compact_gpu_proc_rows)} more")
             else:
                 gpu_body.append("GPU PID      GPU-MEM   MEM%   CPU%   RAM%   COMMAND")
                 for row in gpu_proc_rows:
-                    cmd = truncate_middle(row.cmd, 42)
+                    cmd_lines = self._format_gpu_command_lines(row, 118 if self.show_full_commands else 42, indent=" " * 52)
                     gpu_body.append(
-                        f"[magenta]{row.gpu}[/magenta]   {row.pid:<8} [yellow]{row.mem_mib:>6.0f}M[/yellow]  {row.mem_pct:>5.1f}  [cyan]{row.cpu_pct:>5.1f}[/cyan]  [green]{row.ram_pct:>5.1f}[/green]  {cmd}"
+                        f"[magenta]{row.gpu}[/magenta]   {row.pid:<8} [yellow]{row.mem_mib:>6.0f}M[/yellow]  {row.mem_pct:>5.1f}  [cyan]{row.cpu_pct:>5.1f}[/cyan]  [green]{row.ram_pct:>5.1f}[/green]  {cmd_lines[0]}"
                     )
+                    gpu_body.extend(cmd_lines[1:])
         else:
             gpu_body.append("idle")
         self.gpu_content.update("\n".join(gpu_body))

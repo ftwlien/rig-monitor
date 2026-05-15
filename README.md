@@ -4,7 +4,7 @@ A clean terminal dashboard for NVIDIA GPU rigs.
 
 Built for people running mining, Vast.ai, AI, render, or other GPU-heavy hosts where you need to know what the machine is doing **at a glance**.
 
-`rig-monitor` shows GPU load, VRAM, temperatures, fan speed, power draw, CPU, RAM, bandwidth, disk I/O, and GPU-bound processes in one terminal UI.
+`rig-monitor` shows GPU load, VRAM, temperatures, fan speed, power draw, CPU, CPU package watts when exposed by the OS, RAM, bandwidth, disk I/O, and GPU-bound processes in one terminal UI.
 
 ---
 
@@ -49,7 +49,7 @@ FAN 100%             PWR 450W        MEM 14.7/24.0G
 
 ### System overview
 
-- CPU usage and load average
+- CPU usage, temperature, load average, and CPU package watts when exposed by hwmon/powercap
 - RAM usage with pressure coloring
 - bandwidth up/down with load coloring
 - disk read/write with separate disk-oriented thresholds
@@ -64,7 +64,8 @@ FAN 100%             PWR 450W        MEM 14.7/24.0G
 - NVIDIA GPU stats via NVML
 - optional core/junction/VRAM temperatures via `gputemps`
 - clean fan display: `FAN 0% A` for auto idle, `FAN 100%` under load
-- colored power draw: low/medium/high load is easy to spot
+- colored GPU power draw: low/medium/high load is easy to spot
+- optional CPU/package watt display when the kernel exposes a real sensor
 - separate network and disk color thresholds
 - wall-mode layout for tiled SSH terminals
 - compact GPU mode
@@ -130,6 +131,7 @@ cd ~/rig-monitor && python3 app.py
 
 - `w` — toggle wall mode / standard mode
 - `g` — toggle compact GPU cards
+- `t` — toggle full GPU workload command text
 - `c` — toggle shown CPU cores
 - `f` — toggle dense CPU-core formatting
 - `b` — toggle black mode
@@ -154,7 +156,7 @@ The main area shows:
 
 - GPU Command Center
 - CPU cores
-- GPU workload/process table
+- GPU workload/process table, with `t` to expand full command text
 - optional top-process pane in standard mode
 
 Wall mode prioritizes GPU visibility and high-core-count CPU readability. Standard mode keeps a more traditional broader layout.
